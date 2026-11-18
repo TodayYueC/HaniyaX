@@ -72,6 +72,8 @@ import dev.haniya.x.runtime.SessionEvent
 import dev.haniya.x.runtime.TaskKind
 import dev.haniya.x.runtime.TaskRecord
 import dev.haniya.x.runtime.TaskStatus
+import dev.haniya.x.runtime.TaskSpec
+import dev.haniya.x.core.Paths
 import dev.haniya.x.ui.Nav
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -94,6 +96,14 @@ fun TerminalScreen(taskId: String?) {
     val controller = remember { TerminalController(context) }
 
     LaunchedEffect(taskId) { if (taskId != null) Runtime.tasks.focus(taskId) }
+    // Entering from home with nothing open: start a shell right away (the home tile says "新建会话").
+    // Closing the last tab later keeps the empty state instead of re-spawning.
+    LaunchedEffect(Unit) {
+        if (taskId == null && TabLabels.openTabs(Runtime.tasks.tasks.value).isEmpty()) {
+            runCatching { Runtime.tasks.start(TaskSpec(kind = TaskKind.Shell, title = "Shell", cwd = Paths.GUEST_HOME)) }
+                .onFailure { toast.show("无法启动终端：${it.message ?: "未知错误"}", icon = "info") }
+        }
+    }
 
     val openTabs = TabLabels.openTabs(tasks)
     val currentId = TabLabels.pick(openTabs, focused)
@@ -160,6 +170,15 @@ fun TerminalScreen(taskId: String?) {
         if (text == null) { toast.show("剪贴板里没有文字", icon = "info"); return }
         if (PasteText.needsPreview(text, settings.pastePreviewChars, settings.pastePreviewLines)) pastePending = text
         else if (!controller.paste(text)) toast.show("任务未在运行，无法粘贴", icon = "info")
+    }
+
+    // Keys (hardware keyboard, IME, Enter) must reach the terminal, not Compose focus navigation:
+    // give the TerminalView focus whenever the visible task changes.
+    LaunchedEffect(currentId, session) {
+        if (currentId != null) {
+            delay(50)
+            controller.focusTerminal(showKeyboard = false)
+        }
     }
 
     val layout = remember(settings.extraKeys) { ExtraKeys.parse(settings.extraKeys).layout }

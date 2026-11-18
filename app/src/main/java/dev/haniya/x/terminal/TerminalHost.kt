@@ -21,6 +21,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.viewinterop.AndroidView
 import com.termux.terminal.TerminalEmulator
 import com.termux.terminal.TerminalSession
@@ -411,7 +412,9 @@ fun TerminalHost(
     modifier: Modifier = Modifier,
 ) {
     AndroidView(
-        modifier = modifier,
+        // Termux's renderer fills its canvas with drawColor(…, SRC); without clipping it would paint over
+        // the Compose UI around the view (tab bar, extra keys).
+        modifier = modifier.clipToBounds(),
         factory = { ctx ->
             TerminalView(ctx, null).also { v ->
                 v.setTerminalViewClient(controller.client)
