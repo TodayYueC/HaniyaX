@@ -2798,8 +2798,14 @@ public final class TerminalEmulator {
                                 unknownSequence(b);
                                 return;
                             } else {
-                                mColors.tryParseColor(colorIndex, textParameter.substring(parsingPairStart, i));
-                                mSession.onColorsChanged();
+                                String colorSpec = textParameter.substring(parsingPairStart, i);
+                                if ("?".equals(colorSpec)) {
+                                    // HaniyaX: answer colour queries (OSC 4;c;?) like xterm so TUIs can read the palette.
+                                    mSession.write("\033]4;" + colorIndex + ";" + formatColorReport(mColors.mCurrentColors[colorIndex]) + bellOrStringTerminator);
+                                } else {
+                                    mColors.tryParseColor(colorIndex, colorSpec);
+                                    mSession.onColorsChanged();
+                                }
                                 colorIndex = -1;
                                 parsingPairStart = -1;
                             }
@@ -3535,6 +3541,19 @@ public final class TerminalEmulator {
         if (!Objects.equals(oldTitle, newTitle)) {
             mSession.titleChanged(oldTitle, newTitle);
         }
+    }
+
+    /** HaniyaX: whether the program enabled bracketed paste mode (DECSET 2004). */
+    public boolean isBracketedPasteMode() {
+        return isDecsetInternalBitSet(DECSET_BIT_BRACKETED_PASTE_MODE);
+    }
+
+    /** HaniyaX: xterm-style colour report body, e.g. "rgb:e6e6/eaea/f1f1". */
+    static String formatColorReport(int rgb) {
+        int r = (65535 * ((rgb & 0x00FF0000) >> 16)) / 255;
+        int g = (65535 * ((rgb & 0x0000FF00) >> 8)) / 255;
+        int b = (65535 * ((rgb & 0x000000FF))) / 255;
+        return "rgb:" + String.format(Locale.US, "%04x", r) + "/" + String.format(Locale.US, "%04x", g) + "/" + String.format(Locale.US, "%04x", b);
     }
 
     /** If DECSET 2004 is set, prefix paste with "\033[200~" and suffix with "\033[201~". */

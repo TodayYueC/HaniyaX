@@ -14,6 +14,7 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.text.Editable;
 import android.text.InputType;
+import android.text.Selection;
 import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.view.ActionMode;
@@ -32,6 +33,7 @@ import android.view.autofill.AutofillValue;
 import android.view.inputmethod.BaseInputConnection;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Scroller;
 
 import androidx.annotation.Nullable;
@@ -132,6 +134,34 @@ public final class TerminalView extends View {
     public final static int KEY_EVENT_SOURCE_SOFT_KEYBOARD = 0;
 
     private static final String LOG_TAG = "TerminalView";
+
+    /**
+     * HaniyaX input modes for the soft keyboard.
+     * <ul>
+     * <li>{@link #INPUT_MODE_TEXT} (default): a real text field (TYPE_CLASS_TEXT, no suggestions, multi-line) so
+     * composing IMEs - Chinese pinyin, Japanese, Korean - can compose; only committed text reaches the terminal and
+     * the composition is drawn at the cursor.</li>
+     * <li>{@link #INPUT_MODE_VISIBLE_PASSWORD}: char-by-char input for keyboards that misbehave in text fields
+     * (the upstream "enforce char based input" mode; Chinese IMEs usually fall back to Latin here).</li>
+     * <li>{@link #INPUT_MODE_RAW}: upstream TYPE_NULL key-event mode.</li>
+     * </ul>
+     */
+    public static final int INPUT_MODE_TEXT = 0;
+    public static final int INPUT_MODE_VISIBLE_PASSWORD = 1;
+    public static final int INPUT_MODE_RAW = 2;
+
+    private int mInputMode = INPUT_MODE_TEXT;
+    /** HaniyaX: current IME composition (never sent to the terminal until committed). */
+    private String mPreedit = "";
+    private TerminalInputConnection mInputConnection;
+
+    /** HaniyaX: scrollback search highlight, same semantics as the selection (end column inclusive). */
+    private int mHighlightY1 = TerminalRenderer.NO_HIGHLIGHT, mHighlightY2 = TerminalRenderer.NO_HIGHLIGHT;
+    private int mHighlightX1 = -1, mHighlightX2 = -1;
+    /** HaniyaX: keep the scroll position while new output arrives (used while searching). */
+    private boolean mHoldScrollPosition;
+    /** HaniyaX: total number of rows the attached screen has scrolled up while shown in this view. */
+    private long mScrolledRowsTotal;
 
     public TerminalView(Context context, AttributeSet attributes) { // NO_UCD (unused code)
         super(context, attributes);
@@ -293,6 +323,10 @@ public final class TerminalView extends View {
         mTermSession = session;
         mEmulator = null;
         mCombiningAccent = 0;
+        mPreedit = "";
+        mHighlightY1 = mHighlightY2 = TerminalRenderer.NO_HIGHLIGHT;
+        mHighlightX1 = mHighlightX2 = -1;
+        mScrolledRowsTotal = 0;
 
         // The emulator's cached value will be read in `updateSize()` when emulator is set.
         setTopRow(0, false);
@@ -311,25 +345,24 @@ public final class TerminalView extends View {
         // an alternate view is not selected, like an EditText. This is necessary if an activity is
         // initially started with the alternate view or if activity is returned to from another app
         // and the alternate view was the one selected the last time.
+        int mode = mInputMode;
         if (mClient.isTerminalViewSelected()) {
-            if (mClient.shouldEnforceCharBasedInput()) {
+            if (mClient.shouldEnforceCharBasedInput() || mode == INPUT_MODE_VISIBLE_PASSWORD) {
                 // Some keyboards seems do not reset the internal state on TYPE_NULL.
                 // Affects mostly Samsung stock keyboards.
                 // https://github.com/termux/termux-app/issues/686
-                // However, this is not a valid value as per AOSP since `InputType.TYPE_CLASS_*` is
-                // not set and it logs a warning:
-                // W/InputAttributes: Unexpected input class: inputType=0x00080090 imeOptions=0x02000000
-                // https://cs.android.com/android/platform/superproject/+/android-11.0.0_r40:packages/inputmethods/LatinIME/java/src/com/android/inputmethod/latin/InputAttributes.java;l=79
-                outAttrs.inputType = InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS;
-            } else {
-                // Using InputType.NULL is the most correct input type and avoids issues with other hacks.
-                //
-                // Previous keyboard issues:
-                // https://github.com/termux/termux-packages/issues/25
-                // https://github.com/termux/termux-app/issues/87.
-                // https://github.com/termux/termux-app/issues/126.
-                // https://github.com/termux/termux-app/issues/137 (japanese chars and TYPE_NULL).
+                mode = INPUT_MODE_VISIBLE_PASSWORD;
+                outAttrs.inputType = InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS;
+            } else if (mode == INPUT_MODE_RAW) {
+                // Upstream default: key events only. Breaks composing IMEs (Chinese pinyin etc.).
                 outAttrs.inputType = InputType.TYPE_NULL;
+            } else {
+                // HaniyaX default: a plain multi-line text field without suggestions. Composing IMEs work
+                // (composition stays in the IME/preedit, committed text is sent as UTF-8), and the Enter key
+                // inserts a newline (sent as \r) instead of becoming an editor action.
+                outAttrs.inputType = InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS;
+                outAttrs.initialSelStart = 0;
+                outAttrs.initialSelEnd = 0;
             }
         } else {
             // Corresponds to android:inputType="text"
@@ -338,103 +371,267 @@ public final class TerminalView extends View {
 
         // Note that IME_ACTION_NONE cannot be used as that makes it impossible to input newlines using the on-screen
         // keyboard on Android TV (see https://github.com/termux/termux-app/issues/221).
-        outAttrs.imeOptions = EditorInfo.IME_FLAG_NO_FULLSCREEN;
+        outAttrs.imeOptions = EditorInfo.IME_FLAG_NO_FULLSCREEN | EditorInfo.IME_FLAG_NO_EXTRACT_UI;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Terminal input (commands, secrets) should not be learned by the keyboard.
+            outAttrs.imeOptions |= EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING;
+        }
 
-        return new BaseInputConnection(this, true) {
+        setPreedit("");
+        mInputConnection = new TerminalInputConnection(mode);
+        return mInputConnection;
+    }
 
-            @Override
-            public boolean finishComposingText() {
-                if (TERMINAL_VIEW_KEY_LOGGING_ENABLED) mClient.logInfo(LOG_TAG, "IME: finishComposingText()");
-                super.finishComposingText();
+    /** HaniyaX: input connection that understands IME composition. */
+    private final class TerminalInputConnection extends BaseInputConnection {
 
-                sendTextToTerminal(getEditable());
-                getEditable().clear();
-                return true;
+        private final int mMode;
+
+        TerminalInputConnection(int mode) {
+            super(TerminalView.this, true);
+            mMode = mode;
+        }
+
+        @Override
+        public boolean setComposingText(CharSequence text, int newCursorPosition) {
+            if (TERMINAL_VIEW_KEY_LOGGING_ENABLED) mClient.logInfo(LOG_TAG, "IME: setComposingText(\"" + text + "\", " + newCursorPosition + ")");
+            super.setComposingText(text, newCursorPosition);
+            updatePreeditFromEditable();
+            return true;
+        }
+
+        @Override
+        public boolean setComposingRegion(int start, int end) {
+            if (TERMINAL_VIEW_KEY_LOGGING_ENABLED) mClient.logInfo(LOG_TAG, "IME: setComposingRegion(" + start + ", " + end + ")");
+            super.setComposingRegion(start, end);
+            updatePreeditFromEditable();
+            return true;
+        }
+
+        @Override
+        public boolean finishComposingText() {
+            if (TERMINAL_VIEW_KEY_LOGGING_ENABLED) mClient.logInfo(LOG_TAG, "IME: finishComposingText()");
+            super.finishComposingText();
+            // The IME declares the composition final ("leave the text as-is"): like any text field, that text is now
+            // input, so it is sent to the terminal. Compositions abandoned by the system (focus loss, input restart)
+            // are dropped in closeConnection() before this runs.
+            Editable content = getEditable();
+            if (mEmulator != null) sendTextToTerminal(content);
+            content.clear();
+            setPreedit("");
+            notifyImeEmpty();
+            return true;
+        }
+
+        @Override
+        public boolean commitText(CharSequence text, int newCursorPosition) {
+            if (TERMINAL_VIEW_KEY_LOGGING_ENABLED) {
+                mClient.logInfo(LOG_TAG, "IME: commitText(\"" + text + "\", " + newCursorPosition + ")");
             }
+            super.commitText(text, newCursorPosition);
 
-            @Override
-            public boolean commitText(CharSequence text, int newCursorPosition) {
-                if (TERMINAL_VIEW_KEY_LOGGING_ENABLED) {
-                    mClient.logInfo(LOG_TAG, "IME: commitText(\"" + text + "\", " + newCursorPosition + ")");
-                }
-                super.commitText(text, newCursorPosition);
+            Editable content = getEditable();
+            if (mEmulator != null) sendTextToTerminal(content);
+            content.clear();
+            setPreedit("");
+            notifyImeEmpty();
+            return true;
+        }
 
-                if (mEmulator == null) return true;
-
-                Editable content = getEditable();
-                sendTextToTerminal(content);
-                content.clear();
-                return true;
+        @Override
+        public boolean deleteSurroundingText(int leftLength, int rightLength) {
+            if (TERMINAL_VIEW_KEY_LOGGING_ENABLED) {
+                mClient.logInfo(LOG_TAG, "IME: deleteSurroundingText(" + leftLength + ", " + rightLength + ")");
             }
+            // The editable only ever holds the current composition; everything before it has already been sent to
+            // the terminal. Deletions reaching past the editable's own text therefore become key presses.
+            // The stock Samsung keyboard with 'Auto check spelling' enabled sends leftLength > 1.
+            Editable content = getEditable();
+            int selStart = Math.max(0, Selection.getSelectionStart(content));
+            int selEnd = Math.max(selStart, Selection.getSelectionEnd(content));
+            int keysLeft = Math.max(0, leftLength - selStart);
+            int keysRight = Math.max(0, rightLength - (content.length() - selEnd));
+            KeyEvent deleteKey = new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL);
+            for (int i = 0; i < keysLeft; i++) sendKeyEvent(deleteKey);
+            KeyEvent forwardDeleteKey = new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_FORWARD_DEL);
+            for (int i = 0; i < keysRight; i++) sendKeyEvent(forwardDeleteKey);
+            boolean result = super.deleteSurroundingText(leftLength, rightLength);
+            updatePreeditFromEditable();
+            return result;
+        }
 
-            @Override
-            public boolean deleteSurroundingText(int leftLength, int rightLength) {
-                if (TERMINAL_VIEW_KEY_LOGGING_ENABLED) {
-                    mClient.logInfo(LOG_TAG, "IME: deleteSurroundingText(" + leftLength + ", " + rightLength + ")");
-                }
-                // The stock Samsung keyboard with 'Auto check spelling' enabled sends leftLength > 1.
-                KeyEvent deleteKey = new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL);
-                for (int i = 0; i < leftLength; i++) sendKeyEvent(deleteKey);
-                return super.deleteSurroundingText(leftLength, rightLength);
+        @Override
+        public boolean deleteSurroundingTextInCodePoints(int beforeLength, int afterLength) {
+            return deleteSurroundingText(beforeLength, afterLength);
+        }
+
+        @Override
+        public boolean performEditorAction(int editorAction) {
+            if (TERMINAL_VIEW_KEY_LOGGING_ENABLED) mClient.logInfo(LOG_TAG, "IME: performEditorAction(" + editorAction + ")");
+            // Some keyboards turn Enter into an editor action; for a terminal that is always Enter.
+            if (mTermSession != null) inputCodePoint(KEY_EVENT_SOURCE_SOFT_KEYBOARD, '\r', false, false);
+            return true;
+        }
+
+        @Override
+        public void closeConnection() {
+            // The system ends the connection (focus moved, input restarted): an unfinished composition such as
+            // pending pinyin letters was never chosen by the user, so it is dropped instead of being typed.
+            clearComposition();
+            super.closeConnection();
+            setPreedit("");
+            if (mInputConnection == this) mInputConnection = null;
+        }
+
+        void clearComposition() {
+            Editable content = getEditable();
+            if (content != null) content.clear();
+        }
+
+        /** Tell the IME the (now empty) editable has the cursor at 0 and no composing region. */
+        private void notifyImeEmpty() {
+            InputMethodManager imm = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) imm.updateSelection(TerminalView.this, 0, 0, -1, -1);
+        }
+
+        private void updatePreeditFromEditable() {
+            Editable content = getEditable();
+            int start = getComposingSpanStart(content);
+            int end = getComposingSpanEnd(content);
+            if (start < 0 || end < 0 || start == end) {
+                setPreedit("");
+            } else {
+                setPreedit(content.subSequence(Math.min(start, end), Math.max(start, end)).toString());
             }
+        }
 
-            void sendTextToTerminal(CharSequence text) {
-                stopTextSelectionMode();
-                final int textLengthInChars = text.length();
-                for (int i = 0; i < textLengthInChars; i++) {
-                    char firstChar = text.charAt(i);
-                    int codePoint;
-                    if (Character.isHighSurrogate(firstChar)) {
-                        if (++i < textLengthInChars) {
-                            codePoint = Character.toCodePoint(firstChar, text.charAt(i));
-                        } else {
-                            // At end of string, with no low surrogate following the high:
-                            codePoint = TerminalEmulator.UNICODE_REPLACEMENT_CHAR;
-                        }
+        void sendTextToTerminal(CharSequence text) {
+            stopTextSelectionMode();
+            final int textLengthInChars = text.length();
+            for (int i = 0; i < textLengthInChars; i++) {
+                char firstChar = text.charAt(i);
+                int codePoint;
+                if (Character.isHighSurrogate(firstChar)) {
+                    if (++i < textLengthInChars) {
+                        codePoint = Character.toCodePoint(firstChar, text.charAt(i));
                     } else {
-                        codePoint = firstChar;
+                        // At end of string, with no low surrogate following the high:
+                        codePoint = TerminalEmulator.UNICODE_REPLACEMENT_CHAR;
                     }
-
-                    // Check onKeyDown() for details.
-                    if (mClient.readShiftKey())
-                        codePoint = Character.toUpperCase(codePoint);
-
-                    boolean ctrlHeld = false;
-                    if (codePoint <= 31 && codePoint != 27) {
-                        if (codePoint == '\n') {
-                            // The AOSP keyboard and descendants seems to send \n as text when the enter key is pressed,
-                            // instead of a key event like most other keyboard apps. A terminal expects \r for the enter
-                            // key (although when icrnl is enabled this doesn't make a difference - run 'stty -icrnl' to
-                            // check the behaviour).
-                            codePoint = '\r';
-                        }
-
-                        // E.g. penti keyboard for ctrl input.
-                        ctrlHeld = true;
-                        switch (codePoint) {
-                            case 31:
-                                codePoint = '_';
-                                break;
-                            case 30:
-                                codePoint = '^';
-                                break;
-                            case 29:
-                                codePoint = ']';
-                                break;
-                            case 28:
-                                codePoint = '\\';
-                                break;
-                            default:
-                                codePoint += 96;
-                                break;
-                        }
-                    }
-
-                    inputCodePoint(KEY_EVENT_SOURCE_SOFT_KEYBOARD, codePoint, ctrlHeld, false);
+                } else {
+                    codePoint = firstChar;
                 }
-            }
 
-        };
+                // Check onKeyDown() for details.
+                if (mClient.readShiftKey())
+                    codePoint = Character.toUpperCase(codePoint);
+
+                boolean ctrlHeld = false;
+                if (codePoint <= 31 && codePoint != 27) {
+                    if (codePoint == '\n') {
+                        // The AOSP keyboard and descendants seems to send \n as text when the enter key is pressed,
+                        // instead of a key event like most other keyboard apps. A terminal expects \r for the enter
+                        // key (although when icrnl is enabled this doesn't make a difference - run 'stty -icrnl' to
+                        // check the behaviour).
+                        codePoint = '\r';
+                    }
+
+                    // E.g. penti keyboard for ctrl input.
+                    ctrlHeld = true;
+                    switch (codePoint) {
+                        case 31:
+                            codePoint = '_';
+                            break;
+                        case 30:
+                            codePoint = '^';
+                            break;
+                        case 29:
+                            codePoint = ']';
+                            break;
+                        case 28:
+                            codePoint = '\\';
+                            break;
+                        default:
+                            codePoint += 96;
+                            break;
+                    }
+                }
+
+                inputCodePoint(KEY_EVENT_SOURCE_SOFT_KEYBOARD, codePoint, ctrlHeld, false);
+            }
+        }
+
+    }
+
+    /** HaniyaX: set the soft keyboard input mode ({@link #INPUT_MODE_TEXT} etc.) and restart the IME if needed. */
+    public void setInputMode(int mode) {
+        if (mode != INPUT_MODE_TEXT && mode != INPUT_MODE_VISIBLE_PASSWORD && mode != INPUT_MODE_RAW) mode = INPUT_MODE_TEXT;
+        if (mode == mInputMode) return;
+        mInputMode = mode;
+        restartInputMethod();
+    }
+
+    public int getInputMode() {
+        return mInputMode;
+    }
+
+    /** HaniyaX: the composition the IME is currently building (empty if none). */
+    public String getPreedit() {
+        return mPreedit;
+    }
+
+    /**
+     * HaniyaX: abandon the IME composition (e.g. before an extra key is sent) so pending pinyin letters are not
+     * mixed into the key sequence. Restarts the input method only if something was composing.
+     */
+    public void cancelComposition() {
+        if (mPreedit.isEmpty()) return;
+        if (mInputConnection != null) mInputConnection.clearComposition();
+        setPreedit("");
+        restartInputMethod();
+    }
+
+    private void restartInputMethod() {
+        InputMethodManager imm = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) imm.restartInput(this);
+    }
+
+    private void setPreedit(String preedit) {
+        if (preedit == null) preedit = "";
+        if (preedit.equals(mPreedit)) return;
+        mPreedit = preedit;
+        invalidate();
+    }
+
+    /**
+     * HaniyaX: highlight a range (rows in external screen coordinates, end column inclusive) for scrollback search.
+     */
+    public void setSearchHighlight(int startRow, int startColumn, int endRow, int endColumn) {
+        mHighlightY1 = startRow;
+        mHighlightX1 = startColumn;
+        mHighlightY2 = endRow;
+        mHighlightX2 = endColumn;
+        invalidate();
+    }
+
+    public void clearSearchHighlight() {
+        if (mHighlightY1 == TerminalRenderer.NO_HIGHLIGHT) return;
+        mHighlightY1 = mHighlightY2 = TerminalRenderer.NO_HIGHLIGHT;
+        mHighlightX1 = mHighlightX2 = -1;
+        invalidate();
+    }
+
+    /** HaniyaX: while true, new output does not scroll the view back to the bottom. */
+    public void setHoldScrollPosition(boolean hold) {
+        mHoldScrollPosition = hold;
+    }
+
+    /**
+     * HaniyaX: rows the attached screen scrolled up (into the transcript) since it was attached. A row captured as
+     * external row {@code r} when this returned {@code t0} is now at {@code r - (getScrolledRowsTotal() - t0)}.
+     */
+    public long getScrolledRowsTotal() {
+        return mScrolledRowsTotal;
     }
 
     @Override
@@ -462,7 +659,19 @@ public final class TerminalView extends View {
         int rowsInHistory = mEmulator.getScreen().getActiveTranscriptRows();
         if (mTopRow < -rowsInHistory) setTopRow(-rowsInHistory);
 
-        if (isSelectingText() || mEmulator.isAutoScrollDisabled()) {
+        // HaniyaX: keep the search highlight on the same text while output scrolls it up.
+        int scrolled = mEmulator.getScrollCounter();
+        mScrolledRowsTotal += scrolled;
+        if (scrolled != 0 && mHighlightY1 != TerminalRenderer.NO_HIGHLIGHT) {
+            mHighlightY1 -= scrolled;
+            mHighlightY2 -= scrolled;
+            if (mHighlightY2 < -rowsInHistory) {
+                mHighlightY1 = mHighlightY2 = TerminalRenderer.NO_HIGHLIGHT;
+                mHighlightX1 = mHighlightX2 = -1;
+            }
+        }
+
+        if (isSelectingText() || mEmulator.isAutoScrollDisabled() || mHoldScrollPosition) {
             // Do not scroll when selecting text.
             int rowShift = mEmulator.getScrollCounter();
             if (-mTopRow + rowShift > rowsInHistory) {
@@ -471,7 +680,7 @@ public final class TerminalView extends View {
                 if (isSelectingText())
                     stopTextSelectionMode();
 
-                if (mEmulator.isAutoScrollDisabled()) {
+                if (mEmulator.isAutoScrollDisabled() || mHoldScrollPosition) {
                     setTopRow(-rowsInHistory);
                     skipScrolling = true;
                 }
@@ -1021,7 +1230,7 @@ public final class TerminalView extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         if (mEmulator == null) {
-            canvas.drawColor(0XFF000000);
+            canvas.drawColor(TerminalRenderer.sEmptyBackgroundColor);
         } else {
             // render the terminal view and highlight any selected text
             int[] sel = mDefaultSelectors;
@@ -1029,7 +1238,11 @@ public final class TerminalView extends View {
                 mTextSelectionCursorController.getSelectors(sel);
             }
 
-            mRenderer.render(mEmulator, canvas, mTopRow, sel[0], sel[1], sel[2], sel[3]);
+            mRenderer.render(mEmulator, canvas, mTopRow, sel[0], sel[1], sel[2], sel[3],
+                mHighlightY1, mHighlightY2, mHighlightX1, mHighlightX2);
+
+            // HaniyaX: show the IME composition at the cursor.
+            if (!mPreedit.isEmpty()) mRenderer.renderPreedit(mEmulator, canvas, mTopRow, mPreedit);
 
             // render the text selection handles
             renderTextSelection();

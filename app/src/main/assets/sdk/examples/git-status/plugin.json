@@ -1,0 +1,65 @@
+{
+  "$schema": "/opt/haniyax/docs/plugin.schema.json",
+  "apiVersion": 1,
+  "id": "git-status",
+  "name": "Git 状态",
+  "version": "1.0.0",
+  "description": "项目的当前分支与未提交的改动",
+  "icon": "branch",
+  "params": {
+    "repo": {
+      "type": "path",
+      "label": "项目目录",
+      "default": "~/projects/web",
+      "description": "一个 git 仓库的目录"
+    }
+  },
+  "refresh": 30,
+  "sources": {
+    "branch": {
+      "type": "command",
+      "run": "git -C {{params.repo}} branch --show-current",
+      "timeout": 10
+    },
+    "changes": {
+      "type": "command",
+      "run": "git -C {{params.repo}} status --short",
+      "parse": "lines",
+      "timeout": 10
+    }
+  },
+  "card": {
+    "title": "Git 状态",
+    "subtitle": "{{params.repo}}",
+    "blocks": [
+      {
+        "type": "kv",
+        "items": [
+          { "label": "分支", "value": "{{sources.branch.value}}" },
+          { "label": "未提交的改动", "value": "{{sources.changes.count}} 个文件" }
+        ]
+      }
+    ]
+  },
+  "actions": [
+    {
+      "id": "changes",
+      "label": "查看改动",
+      "icon": "diff",
+      "type": "sheet",
+      "title": "未提交的改动",
+      "blocks": [
+        { "type": "log", "source": "changes", "lines": 50 }
+      ]
+    },
+    {
+      "id": "shell",
+      "label": "打开终端",
+      "icon": "terminal",
+      "type": "terminal",
+      "run": "git status",
+      "cwd": "{{params.repo}}"
+    }
+  ],
+  "tap": "changes"
+}

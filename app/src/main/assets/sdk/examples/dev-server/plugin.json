@@ -1,0 +1,55 @@
+{
+  "$schema": "/opt/haniyax/docs/plugin.schema.json",
+  "apiVersion": 1,
+  "id": "dev-server",
+  "name": "开发服务器",
+  "version": "1.0.0",
+  "description": "显示开发服务器是否在线，点一下查看最近 20 行日志",
+  "icon": "server",
+  "params": {
+    "port": {
+      "type": "number",
+      "label": "端口",
+      "default": 3000,
+      "description": "开发服务器在 127.0.0.1 上监听的端口"
+    },
+    "log": {
+      "type": "path",
+      "label": "日志文件",
+      "default": "~/projects/web/dev.log",
+      "description": "开发服务器输出的日志文件，例如 npm run dev > dev.log 2>&1"
+    }
+  },
+  "refresh": 10,
+  "sources": {
+    "web": { "type": "port", "port": "{{params.port}}" },
+    "log": { "type": "file", "path": "{{params.log}}", "tail": 20 }
+  },
+  "card": {
+    "title": "开发服务器",
+    "subtitle": "127.0.0.1:{{params.port}}",
+    "blocks": [
+      { "type": "status", "source": "web", "ok": "在线", "fail": "未在运行" }
+    ]
+  },
+  "actions": [
+    {
+      "id": "logs",
+      "label": "最近日志",
+      "icon": "list",
+      "type": "sheet",
+      "title": "最近 20 行日志",
+      "blocks": [
+        { "type": "log", "source": "log", "lines": 20 }
+      ]
+    },
+    {
+      "id": "open",
+      "label": "打开页面",
+      "icon": "globe",
+      "type": "openUrl",
+      "url": "http://127.0.0.1:{{params.port}}/"
+    }
+  ],
+  "tap": "logs"
+}

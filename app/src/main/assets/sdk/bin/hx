@@ -1,0 +1,1217 @@
+#!/usr/bin/env bash
+# hx — HaniyaX 开发命令行（插件卡片、后台服务、项目与任务）
+#
+# 运行在 HaniyaX 工作区（proot + Debian）中，通过 App 的本机控制接口（127.0.0.1，带令牌）查询和操作。
+# 只改文件的命令（plugin new/install/remove/params、service add/remove）在 App 未运行时也能用。
+#
+# 退出码：0 成功 · 1 失败（校验未通过、操作失败）· 2 用法错误 · 3 无法连接 HaniyaX · 4 找不到对象
+#
+# 环境变量（一般不需要设置）：
+#   HX_HOME   用户数据目录，默认 ~/.haniyax
+#   HX_SDK    SDK 目录，默认为本脚本所在目录的上一级（/opt/haniyax）
+
+set -o pipefail
+
+HX_API_VERSION=1
+E_OK=0; E_FAIL=1; E_USAGE=2; E_NOAPP=3; E_NOTFOUND=4
+
+HX_HOME="${HX_HOME:-$HOME/.haniyax}"
+if [ -z "${HX_SDK:-}" ]; then
+    _self="${BASH_SOURCE[0]}"
+    _real="$(readlink -f "$_self" 2>/dev/null || printf '%s' "$_self")"
+    HX_SDK="$(cd "$(dirname "$_real")/.." 2>/dev/null && pwd)"
+    [ -d "$HX_SDK/docs" ] || HX_SDK=/opt/haniyax
+fi
+PLUGINS_DIR="$HX_HOME/plugins"
+SERVICES_DIR="$HX_HOME/services"
+LOGS_DIR="$HX_HOME/logs"
+CONTROL_FILE="$HX_HOME/control.json"
+DOCS_DIR="$HX_SDK/docs"
+EXAMPLES_DIR="$HX_SDK/examples"
+
+ID_RE='^[a-z0-9]+(-[a-z0-9]+)*$'
+SERVICE_RE='^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$'
+PARAM_RE='^[A-Za-z_][A-Za-z0-9_]*$'
+
+JSON=0
+YES=0
+FORCE=0
+
+# ----------------------------------------------------------------------------- output helpers
+
+_tmpfiles=()
+cleanup() { local f; for f in "${_tmpfiles[@]}"; do rm -rf -- "$f" 2>/dev/null; done; }
+trap cleanup EXIT
+
+# new_tmp / new_tmpdir set TMP_PATH (no subshell, so the cleanup list is kept).
+TMP_PATH=""
+new_tmp() { TMP_PATH="$(mktemp "${TMPDIR:-/tmp}/hx.XXXXXX")" || return 1; _tmpfiles+=("$TMP_PATH"); }
+new_tmpdir() { TMP_PATH="$(mktemp -d "${TMPDIR:-/tmp}/hx.XXXXXX")" || return 1; _tmpfiles+=("$TMP_PATH"); }
+
+have() { command -v "$1" >/dev/null 2>&1; }
+
+# Minimal JSON string escaping for when jq is unavailable.
+json_str() {
+    local s="$1"
+    s="${s//\\/\\\\}"; s="${s//\"/\\\"}"; s="${s//$'\n'/\\n}"; s="${s//$'\t'/\\t}"; s="${s//$'\r'/\\r}"
+    printf '"%s"' "$s"
+}
+
+info() { [ "$JSON" = 1 ] || printf '%s\n' "$*"; }
+warn() { printf 'hx: %s\n' "$*" >&2; }
+
+# die CODE MESSAGE — prints the error (JSON on stdout in --json mode) and exits.
+die() {
+    local code="$1"; shift
+    if [ "$JSON" = 1 ]; then
+        printf '{"ok":false,"code":%s,"error":%s}\n' "$code" "$(json_str "$*")"
+    else
+        printf 'hx: %s\n' "$*" >&2
+    fi
+    exit "$code"
+}
+
+need_jq() {
+    have jq || die $E_FAIL "需要 jq，请先运行：apt-get install -y jq"
+}
+
+usage_die() { die $E_USAGE "$1（运行 hx help 查看用法）"; }
+
+# ----------------------------------------------------------------------------- control API
+
+API_PORT=""; API_TOKEN=""; API_STATUS=""; API_OUT=""; API_ERR=""
+
+api_load() {
+    if [ ! -f "$CONTROL_FILE" ]; then
+        API_ERR="找不到 $CONTROL_FILE：HaniyaX 尚未运行，或工作区刚刚创建。打开 HaniyaX 后重试。"
+        return 1
+    fi
+    if [ ! -r "$CONTROL_FILE" ]; then
+        API_ERR="无法读取 $CONTROL_FILE"
+        return 1
+    fi
+    API_PORT="$(jq -r '.port // empty' "$CONTROL_FILE" 2>/dev/null)"
+    API_TOKEN="$(jq -r '.token // empty' "$CONTROL_FILE" 2>/dev/null)"
+    if [ -z "$API_PORT" ] || [ -z "$API_TOKEN" ]; then
+        API_ERR="$CONTROL_FILE 内容不完整，请重新打开 HaniyaX"
+        return 1
+    fi
+    return 0
+}
+
+# api METHOD PATH [BODY_FILE] [ACCEPT]
+# Returns 0 when an HTTP response arrived (any status; see API_STATUS / API_OUT), 1 when unreachable.
+api() {
+    local method="$1" path="$2" body="${3:-}" accept="${4:-application/json}"
+    have curl || { API_ERR="需要 curl，请先运行：apt-get install -y curl"; return 1; }
+    api_load || return 1
+    new_tmp || { API_ERR="无法创建临时文件"; return 1; }
+    API_OUT="$TMP_PATH"
+    local args=(-sS -X "$method" -o "$API_OUT" -w '%{http_code}' --connect-timeout 3 --max-time "${HX_API_TIMEOUT:-45}" -H "Accept: $accept")
+    if [ -n "$body" ]; then
+        args+=(-H 'Content-Type: application/json' --data-binary "@$body")
+    fi
+    local rc
+    # The token goes to curl on stdin (config syntax), so it never shows up in the process list.
+    API_STATUS="$(printf 'header = "Authorization: Bearer %s"\n' "$API_TOKEN" | curl -K - "${args[@]}" "http://127.0.0.1:${API_PORT}${path}" 2>/dev/null)"
+    rc=$?
+    if [ $rc -ne 0 ]; then
+        case $rc in
+            7) API_ERR="无法连接 HaniyaX（127.0.0.1:${API_PORT}）：App 可能没有在运行。打开 HaniyaX 后重试。" ;;
+            28) API_ERR="HaniyaX 响应超时，请稍后重试" ;;
+            *) API_ERR="请求 HaniyaX 失败（curl 退出码 $rc）" ;;
+        esac
+        return 1
+    fi
+    return 0
+}
+
+api_ok() { [ "$API_STATUS" = "200" ]; }
+
+api_error_text() {
+    local e
+    e="$(jq -r '.error // empty' "$API_OUT" 2>/dev/null)"
+    [ -n "$e" ] && printf '%s' "$e" || printf 'HaniyaX 返回 HTTP %s' "$API_STATUS"
+}
+
+# Dies with a useful message unless the last api call returned 200.
+api_require_ok() {
+    api_ok && return 0
+    local code=$E_FAIL
+    [ "$API_STATUS" = "404" ] && code=$E_NOTFOUND
+    [ "$API_STATUS" = "401" ] && code=$E_NOAPP
+    if [ "$JSON" = 1 ] && jq -e . "$API_OUT" >/dev/null 2>&1; then cat "$API_OUT"; echo; exit $code; fi
+    die $code "$(api_error_text)"
+}
+
+# Calls the API or exits with E_NOAPP.
+api_or_die() {
+    api "$@" || die $E_NOAPP "$API_ERR"
+}
+
+app_reachable() { api GET /v1/version && api_ok; }
+
+# Asks a running app to reload; prints a short note either way.
+notify_reload() {
+    if api POST /v1/reload && api_ok; then
+        info "已通知 HaniyaX 重新读取。"
+        RELOADED=true
+    else
+        info "HaniyaX 当前未连接；它在运行时会在约 2 秒内自动读取改动。"
+        RELOADED=false
+    fi
+}
+RELOADED=false
+
+# ----------------------------------------------------------------------------- shared jq programs
+
+# Trust classification, identical to the app: command sources, or command/terminal/service actions.
+JQ_TRUST='def hxtrust: if (((.sources // {}) | if type == "object" then [.[] | objects | select(.type == "command")] else [] end | length) > 0)
+    or (((.actions // []) | if type == "array" then [.[] | objects | select(.type == "command" or .type == "terminal" or .type == "service")] else [] end | length) > 0)
+  then "runs-commands" else "display-only" end;'
+
+# Structural check used when the app is not reachable. Mirrors the most important rules of the app's
+# parser (the app's validation is authoritative). Input: plugin.json; $dir: expected id or "".
+JQ_VALIDATE='
+def kebab: test("^[a-z0-9]+(-[a-z0-9]+)*$");
+def semver: test("^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$");
+def loopback: test("^http://(127\\.0\\.0\\.1|localhost|\\[::1\\])([:/?#]|$)"; "i");
+def isint: type == "number" and . == floor;
+def unknown($prefix; $allowed): [keys_unsorted[] | select((. as $k | $allowed | index([$k])) == null) | select(startswith("x-") | not) | "\($prefix)\(.)：未知字段"];
+def srcref($names; $p): if (.source | type) != "string" then "\($p).source：缺少必填字段"
+  elif (.source as $s | $names | index([$s])) == null then "\($p).source：没有名为 \(.source) 的数据源" else empty end;
+def blockerrs($path; $names):
+  if type != "array" then ["\($path)：必须是数组 []"] else
+  [ to_entries[] | .key as $i | .value as $b | "\($path)[\($i)]" as $p |
+    if ($b | type) != "object" then "\($p)：必须是对象 {}"
+    elif ($b.type | type) != "string" then "\($p).type：缺少必填字段"
+    elif $b.type == "status" then ($b | srcref($names; $p))
+    elif $b.type == "log" then ($b | srcref($names; $p)), (if $b.lines != null and (($b.lines | isint | not) or $b.lines < 1 or $b.lines > 200) then "\($p).lines：必须是 1 到 200 之间的整数" else empty end)
+    elif $b.type == "sparkline" then ($b | srcref($names; $p))
+    elif $b.type == "text" then (if ($b.value | type) != "string" then "\($p).value：缺少必填字段" else empty end)
+    elif $b.type == "kv" then (if ($b.items | type) != "array" then "\($p).items：必须是数组 []" else ($b.items | to_entries[] | select((.value | type) != "object" or (.value.label | type) != "string" or (.value.value | type) != "string") | "\($p).items[\(.key)]：需要字符串 label 与 value") end)
+    elif $b.type == "metric" then (if ($b.label | type) != "string" or ($b.value | type) != "string" then "\($p)：metric 需要字符串 label 与 value" else empty end)
+    elif $b.type == "progress" then (if ($b.value | type) != "string" then "\($p).value：缺少必填字段" else empty end)
+    else "\($p).type：未知的展示块类型 \($b.type)，可用：status、text、kv、metric、log、progress、sparkline" end ] end;
+def cmdcheck($p): if test("\\{\\{\\s*sources\\.") then "\($p)：命令中只能引用 params，不能引用 sources" else empty end;
+. as $m |
+if type != "object" then ["plugin.json 顶层必须是一个对象 {}"] else
+  ((.sources // {}) | if type == "object" then keys_unsorted else [] end) as $names |
+  ((.params // {}) | if type == "object" then keys_unsorted else [] end) as $pnames |
+  [
+    (if .apiVersion == null then "apiVersion：缺少必填字段（当前为 1）" elif (.apiVersion | isint | not) then "apiVersion：必须是整数" elif .apiVersion > 1 then "apiVersion：此卡片需要更新版本的 HaniyaX" elif .apiVersion < 1 then "apiVersion：必须是 1" else empty end),
+    (if (.id | type) != "string" then "id：缺少必填字段" elif (.id | kebab | not) or (.id | length) > 64 then "id：只能使用小写字母、数字和单个连字符（kebab-case），最长 64 个字符" elif ($dir != "" and .id != $dir) then "id：必须与目录名一致（目录名为 \($dir)）" else empty end),
+    (if (.name | type) != "string" then "name：缺少必填字段" elif (.name | test("\\S") | not) then "name：不能为空" elif (.name | length) > 60 then "name：最长 60 个字符" else empty end),
+    (if (.version | type) != "string" then "version：缺少必填字段" elif (.version | semver | not) then "version：必须是语义化版本号，例如 1.0.0" else empty end),
+    (if .refresh != null and ((.refresh | isint | not) or .refresh < 5 or .refresh > 86400) then "refresh：必须是 5 到 86400 之间的整数（秒）" else empty end),
+    (unknown(""; ["$schema","apiVersion","id","name","version","description","icon","params","refresh","sources","card","actions","tap"])[]),
+    (if .params != null and (.params | type) != "object" then "params：必须是对象 {}" else
+      ((.params // {}) | to_entries[] | "params.\(.key)" as $p |
+        if (.key | test("^[A-Za-z_][A-Za-z0-9_]*$") | not) then "\($p)：参数名只能使用字母、数字和下划线，且不能以数字开头"
+        elif (.value | type) != "object" then "\($p)：必须是对象 {}"
+        elif (.value.type as $t | ["string","number","path","boolean"] | index([$t])) == null then "\($p).type：必须是 string、number、path 或 boolean 之一"
+        elif .value.default != null and (
+            (.value.type == "number" and (.value.default | type) != "number") or
+            (.value.type == "boolean" and (.value.default | type) != "boolean") or
+            ((.value.type == "string" or .value.type == "path") and (.value.default | type) != "string"))
+          then "\($p).default：默认值类型必须是 \(.value.type)"
+        else empty end) end),
+    (if .sources != null and (.sources | type) != "object" then "sources：必须是对象 {}" else
+      ((.sources // {}) | to_entries[] | .key as $k | .value as $v | "sources.\($k)" as $p |
+        if ($k | test("^[A-Za-z_][A-Za-z0-9_]*$") | not) then "\($p)：数据源名只能使用字母、数字和下划线，且不能以数字开头"
+        elif ($v | type) != "object" then "\($p)：必须是对象 {}"
+        elif ($v.type | type) != "string" then "\($p).type：缺少必填字段"
+        elif $v.type == "port" then (if $v.port == null then "\($p).port：缺少必填字段" elif ($v.port | type) == "number" and (($v.port | isint | not) or $v.port < 1 or $v.port > 65535) then "\($p).port：端口必须是 1 到 65535 之间的整数" else empty end),
+            (if $v.host != null and ($v.host as $h | ["127.0.0.1","localhost","::1"] | index([$h])) == null then "\($p).host：只能是本机地址 127.0.0.1、localhost 或 ::1" else empty end)
+        elif $v.type == "http" then (if ($v.url | type) != "string" then "\($p).url：缺少必填字段" elif ($v.url | loopback | not) then "\($p).url：只能访问本机地址，必须以 http://127.0.0.1 或 http://localhost 开头" else empty end)
+        elif $v.type == "file" then (if ($v.path | type) != "string" then "\($p).path：缺少必填字段" elif ($v.path | test("\\S") | not) then "\($p).path：不能为空" else empty end)
+        elif $v.type == "process" then (if ($v.match | type) != "string" then "\($p).match：缺少必填字段" elif ($v.match | test("\\S") | not) then "\($p).match：不能为空" else empty end)
+        elif $v.type == "command" then (if ($v.run | type) != "string" then "\($p).run：缺少必填字段" else ($v.run | cmdcheck("\($p).run")) end),
+            (if $v.parse != null and ($v.parse as $x | ["text","json","lines"] | index([$x])) == null then "\($p).parse：必须是 text、json 或 lines 之一" else empty end),
+            (if $v.timeout != null and (($v.timeout | isint | not) or $v.timeout < 1 or $v.timeout > 300) then "\($p).timeout：必须是 1 到 300 之间的整数（秒）" else empty end)
+        else "\($p).type：未知的数据源类型 \($v.type)，可用：port、http、file、process、command" end) end),
+    (if (.card | type) != "object" then "card：缺少必填字段" elif .card.blocks == null then "card.blocks：缺少必填字段" else (.card.blocks | blockerrs("card.blocks"; $names)[]) end),
+    (if .actions != null and (.actions | type) != "array" then "actions：必须是数组 []" else
+      ((.actions // []) | to_entries[] | .key as $i | .value as $a | "actions[\($i)]" as $p |
+        if ($a | type) != "object" then "\($p)：必须是对象 {}"
+        elif ($a.id | type) != "string" then "\($p).id：缺少必填字段"
+        elif ($a.id | test("^[A-Za-z0-9_-]{1,40}$") | not) then "\($p).id：只能使用字母、数字、- 和 _，最长 40 个字符"
+        elif ($a.label | type) != "string" then "\($p).label：缺少必填字段"
+        elif ($a.type | type) != "string" then "\($p).type：缺少必填字段"
+        elif $a.type == "sheet" then (if $a.blocks == null then "\($p).blocks：缺少必填字段" else ($a.blocks | blockerrs("\($p).blocks"; $names)[]) end)
+        elif $a.type == "command" or $a.type == "terminal" then (if ($a.run | type) != "string" then "\($p).run：缺少必填字段" else ($a.run | cmdcheck("\($p).run")) end)
+        elif $a.type == "openUrl" then (if ($a.url | type) != "string" then "\($p).url：缺少必填字段" elif ($a.url | loopback | not) then "\($p).url：只能打开本机地址，必须以 http://127.0.0.1 或 http://localhost 开头" else empty end)
+        elif $a.type == "service" then (if ($a.name | type) != "string" then "\($p).name：缺少必填字段" elif ($a.op as $o | ["start","stop","restart"] | index([$o])) == null then "\($p).op：必须是 start、stop 或 restart 之一" else empty end)
+        else "\($p).type：未知的动作类型 \($a.type)，可用：sheet、command、terminal、openUrl、service" end) end),
+    (if (.actions | type) == "array" then ([.actions[] | objects | .id | strings] | group_by(.) | map(select(length > 1))[] | "actions：动作 id \(.[0]) 重复") else empty end),
+    (if .tap != null and ((.tap | type) != "string" or ((.tap as $t | [(.actions // [])[]? | objects | .id] | index([$t])) == null)) then "tap：没有 id 为 \(.tap) 的动作" else empty end),
+    ([.. | strings | scan("\\{\\{\\s*params\\.([A-Za-z_][A-Za-z0-9_]*)\\s*\\}\\}") | .[0]] | unique | map(select(. as $n | $pnames | index([$n]) == null))[] | "引用了未声明的参数 params.\(.)")
+  ]
+end'
+
+# ----------------------------------------------------------------------------- labels
+
+trust_label() {
+    case "$1" in
+        display-only) printf '仅展示' ;;
+        runs-commands) printf '可执行命令' ;;
+        *) printf '%s' "$1" ;;
+    esac
+}
+
+approval_label() {
+    case "$1" in
+        approved) printf '已允许' ;;
+        pending) printf '待用户在 HaniyaX 中允许' ;;
+        changed) printf '命令已变更，待用户重新确认' ;;
+        not-required) printf '无需确认' ;;
+        *) printf '%s' "$1" ;;
+    esac
+}
+
+service_status_label() {
+    case "$1" in
+        running) printf '运行中' ;;
+        starting) printf '启动中' ;;
+        stopped) printf '已停止' ;;
+        unhealthy) printf '无响应' ;;
+        crashed) printf '已退出' ;;
+        *) printf '%s' "$1" ;;
+    esac
+}
+
+# ----------------------------------------------------------------------------- help
+
+print_help() {
+    cat <<EOF
+hx — HaniyaX 开发命令行
+
+用法：hx <命令> [参数] [--json]
+
+  hx help                      显示本帮助
+  hx version                   hx 与 HaniyaX 的版本
+  hx docs                      文档位置与快速开始
+
+首页卡片（插件）
+  hx plugin list               列出所有卡片
+  hx plugin show <id>          卡片详情：类型、参数、命令、错误
+  hx plugin new <id> [--template blank|dev-server|git-status|disk] [--name 名称]
+                               从模板创建卡片（~/.haniyax/plugins/<id>/plugin.json）
+  hx plugin validate <id|目录|plugin.json>
+                               校验卡片（App 未运行时只做基础检查）
+  hx plugin preview <id>       用当前实时数据渲染卡片的文本预览（需要 App 在运行）
+  hx plugin install <目录|文件.hxcard> [--force]
+                               安装卡片；--force 替换同 id 的卡片（保留本机参数）
+  hx plugin remove <id> [--yes]
+                               移除卡片
+  hx plugin export <id> [输出.hxcard]
+                               导出为 .hxcard（不含本机参数 local.json）
+  hx plugin params <id> [名称=值 …]
+                               查看或设置本机参数（写入 local.json；"名称=" 恢复默认）
+  hx plugin edit-hint <id>     修改已有卡片的步骤说明（给 Agent 看）
+  hx plugin reload             让 App 立即重新读取所有卡片
+
+后台服务
+  hx service list
+  hx service add --name 名称 --cmd 命令 [--cwd 目录] [--port 端口] [--health /路径]
+                 [--log 日志文件] [--env K=V]… [--autostart] [--description 说明] [--force]
+  hx service start|stop|restart <名称>
+  hx service logs <名称> [-n 20]
+  hx service remove <名称>
+
+项目与任务
+  hx project list
+  hx task list
+
+通用选项：--json 输出机器可读的 JSON
+
+退出码：0 成功 · 1 失败 · 2 用法错误 · 3 无法连接 HaniyaX · 4 找不到对象
+
+文档：$DOCS_DIR/README.md
+EOF
+}
+
+# ----------------------------------------------------------------------------- version / docs
+
+sdk_version() {
+    local v=""
+    [ -f "$HX_SDK/VERSION" ] && v="$(sed -n 's/^versionName=//p' "$HX_SDK/VERSION" | head -n 1)"
+    printf '%s' "${v:-dev}"
+}
+
+cmd_version() {
+    local sdk app="" ws=""
+    sdk="$(sdk_version)"
+    if have jq && api GET /v1/version && api_ok; then
+        app="$(jq -r '.app // empty' "$API_OUT")"
+        ws="$(jq -r '.workspace // empty' "$API_OUT")"
+    fi
+    if [ "$JSON" = 1 ]; then
+        printf '{"ok":true,"hx":%s,"apiVersion":%s,"app":%s,"connected":%s}\n' \
+            "$(json_str "$sdk")" "$HX_API_VERSION" "$( [ -n "$app" ] && json_str "$app" || printf 'null')" "$( [ -n "$app" ] && printf true || printf false)"
+        return 0
+    fi
+    printf 'hx %s（插件 apiVersion %s）\n' "$sdk" "$HX_API_VERSION"
+    if [ -n "$app" ]; then
+        printf 'HaniyaX %s · 已连接（工作区：%s）\n' "$app" "$ws"
+    else
+        printf 'HaniyaX 未连接：%s\n' "${API_ERR:-App 未在运行}"
+    fi
+}
+
+cmd_docs() {
+    local readme="$DOCS_DIR/README.md"
+    if [ "$JSON" = 1 ]; then
+        printf '{"ok":true,"readme":%s,"plugins":%s,"services":%s,"cookbook":%s,"schema":%s,"examples":%s}\n' \
+            "$(json_str "$readme")" "$(json_str "$DOCS_DIR/plugins.md")" "$(json_str "$DOCS_DIR/services.md")" \
+            "$(json_str "$DOCS_DIR/cookbook.md")" "$(json_str "$DOCS_DIR/plugin.schema.json")" "$(json_str "$EXAMPLES_DIR")"
+        return 0
+    fi
+    printf '文档：%s\n' "$readme"
+    printf '  卡片清单参考   %s\n' "$DOCS_DIR/plugins.md"
+    printf '  后台服务       %s\n' "$DOCS_DIR/services.md"
+    printf '  示例与配方     %s\n' "$DOCS_DIR/cookbook.md"
+    printf '  JSON Schema    %s\n' "$DOCS_DIR/plugin.schema.json"
+    printf '  模板           %s\n' "$EXAMPLES_DIR"
+    if [ -f "$readme" ]; then
+        printf '\n'
+        awk '/^## 快速开始/{on=1; print; next} on && /^## /{exit} on{print}' "$readme"
+    else
+        warn "找不到 $readme"
+    fi
+}
+
+# ----------------------------------------------------------------------------- plugin helpers
+
+check_id() {
+    [ -n "$1" ] || usage_die "缺少卡片 id"
+    [[ "$1" =~ $ID_RE ]] && [ ${#1} -le 64 ] || die $E_USAGE "卡片 id「$1」无效：只能使用小写字母、数字和单个连字符（kebab-case），例如 my-card"
+}
+
+plugin_dir() { printf '%s/%s' "$PLUGINS_DIR" "$1"; }
+
+require_plugin() {
+    local d; d="$(plugin_dir "$1")"
+    [ -f "$d/plugin.json" ] || die $E_NOTFOUND "没有 id 为 $1 的卡片（$d/plugin.json 不存在）。用 hx plugin list 查看已有卡片。"
+}
+
+templates_list() {
+    local d
+    for d in "$EXAMPLES_DIR"/*/; do [ -f "$d/plugin.json" ] && basename "$d"; done
+}
+
+# Offline summary of every plugin directory as a JSON array (read straight from the files).
+offline_plugins_json() {
+    local d id out="[]" one
+    for d in "$PLUGINS_DIR"/*/; do
+        [ -d "$d" ] || continue
+        id="$(basename "$d")"
+        case "$id" in .*) continue ;; esac
+        if [ ! -f "$d/plugin.json" ]; then
+            one="$(jq -n --arg id "$id" '{id:$id,name:$id,version:"?",trust:"runs-commands",approved:null,errors:["缺少 plugin.json"]}')"
+        elif ! one="$(jq -c --arg id "$id" "$JQ_TRUST"' {id:$id, name:(.name // $id), version:(.version // "?"), trust:hxtrust, approved:null, errors:[]}' "$d/plugin.json" 2>/dev/null)"; then
+            one="$(jq -n --arg id "$id" '{id:$id,name:$id,version:"?",trust:"runs-commands",approved:null,errors:["plugin.json 不是有效的 JSON"]}')"
+        fi
+        out="$(jq -c --argjson one "$one" '. + [$one]' <<<"$out")"
+    done
+    printf '%s' "$out"
+}
+
+print_plugin_lines() {
+    # stdin: JSON array of plugins (from the API or offline)
+    jq -r '.[] | [
+        .id, .version, .name, .trust,
+        (.approval // ""),
+        ((.errors // []) | length | tostring),
+        ((.missingParams // []) | join("、"))
+      ] | map(tostring | gsub("[\u001f\n]"; " ")) | join("\u001f")'
+}
+
+# ----------------------------------------------------------------------------- plugin commands
+
+cmd_plugin_list() {
+    need_jq
+    local data connected=true
+    if api GET /v1/plugins && api_ok; then
+        data="$(jq -c '.plugins' "$API_OUT")"
+    else
+        connected=false
+        data="$(offline_plugins_json)"
+    fi
+    if [ "$JSON" = 1 ]; then
+        jq -c --argjson c "$connected" '{ok:true, connected:$c, plugins:.}' <<<"$data"
+        return 0
+    fi
+    local n; n="$(jq 'length' <<<"$data")"
+    if [ "$n" = 0 ]; then
+        info "还没有卡片。用 hx plugin new my-card --template dev-server 创建一张。"
+    else
+        local id ver name trust appr nerr missing status
+        while IFS=$'\x1f' read -r id ver name trust appr nerr missing; do
+            if [ "$nerr" != 0 ]; then status="有 $nerr 处错误（hx plugin validate $id）"
+            elif [ "$connected" = false ]; then status="状态未知（HaniyaX 未连接）"
+            elif [ "$appr" = pending ] || [ "$appr" = changed ]; then status="$(approval_label "$appr")"
+            elif [ -n "$missing" ]; then status="缺少参数：$missing"
+            else status="正常"
+            fi
+            printf '%s  v%s  %s\n    %s · %s\n' "$id" "$ver" "$name" "$(trust_label "$trust")" "$status"
+        done < <(print_plugin_lines <<<"$data")
+    fi
+    [ "$connected" = true ] || info "（HaniyaX 未连接：只显示了文件中的信息）"
+}
+
+cmd_plugin_show() {
+    need_jq
+    local id="$1"; check_id "$id"
+    if api GET "/v1/plugins/$id"; then
+        api_require_ok
+        if [ "$JSON" = 1 ]; then cat "$API_OUT"; echo; return 0; fi
+        jq -r '
+          def tl: if . == "display-only" then "仅展示" elif . == "runs-commands" then "可执行命令" else . end;
+          def al: if . == "approved" then "已允许" elif . == "pending" then "待用户在 HaniyaX 中允许" elif . == "changed" then "命令已变更，待用户重新确认" else "无需确认" end;
+          "\(.name)  (\(.id) v\(.version))",
+          "目录：\(.dir)/plugin.json",
+          "类型：\(.trust | tl)" + (if .trust == "runs-commands" then " · \(.approval | al)" else "" end),
+          (if (.description // "") != "" then "说明：\(.description)" else empty end),
+          "刷新：每 \(.refresh // 15) 秒（仅在首页可见时）",
+          (if (.params | length) > 0 then "参数：", (.params | to_entries[] | "  \(.key) (\(.value.type)) = \(.value.value // "（未设置）" | tostring)" + (if .value.local then "  [本机]" else "  [默认]" end) + "  \(.value.label)") else empty end),
+          (if (.sources | length) > 0 then "数据源：" + ([.sources | to_entries[] | "\(.key)(\(.value))"] | join("、")) else empty end),
+          (if (.actions | length) > 0 then "动作：", (.tap as $tap | .actions[] | "  \(.id)  \(.label)  (\(.type))" + (if .id == $tap then "  ← 点按卡片" else "" end)) else empty end),
+          (if (.commands | length) > 0 then "命令（参数已代入）：", (.commands[] | "  [\(.where)] \(.run)" + (if .cwd then "   （目录 \(.cwd)）" else "" end)) else empty end),
+          (if (.errors | length) > 0 then "错误：", (.errors[] | "  - \(.)") else empty end),
+          (if (.warnings | length) > 0 then "提示：", (.warnings[] | "  - \(.)") else empty end),
+          (if (.note // "") != "" then "", .note else empty end)
+        ' "$API_OUT"
+        return 0
+    fi
+    # Offline: read the file.
+    require_plugin "$id"
+    local f; f="$(plugin_dir "$id")/plugin.json"
+    if [ "$JSON" = 1 ]; then
+        jq -c --arg id "$id" --arg dir "$(plugin_dir "$id")" "$JQ_TRUST"' {ok:true, connected:false, id:$id, name:.name, version:.version, trust:hxtrust, dir:$dir, manifest:.}' "$f" 2>/dev/null \
+            || die $E_FAIL "plugin.json 不是有效的 JSON：$f"
+        return 0
+    fi
+    jq -r "$JQ_TRUST"'
+      "\(.name // "?")  (\(.id // "?") v\(.version // "?"))",
+      "类型：" + (hxtrust | if . == "runs-commands" then "可执行命令" else "仅展示" end),
+      (if (.description // "") != "" then "说明：\(.description)" else empty end),
+      (if ((.params // {}) | length) > 0 then "参数：" + ([(.params // {}) | keys[]] | join("、")) else empty end),
+      (if ((.sources // {}) | length) > 0 then "数据源：" + ([(.sources // {}) | to_entries[] | "\(.key)(\(.value.type))"] | join("、")) else empty end),
+      (if ((.actions // []) | length) > 0 then "动作：" + ([(.actions // [])[] | "\(.id)(\(.type))"] | join("、")) else empty end)
+    ' "$f" 2>/dev/null || die $E_FAIL "plugin.json 不是有效的 JSON：$f"
+    printf '文件：%s\n' "$f"
+    info "（HaniyaX 未连接：确认状态与实时数据需要 App 在运行）"
+}
+
+cmd_plugin_new() {
+    need_jq
+    local id="" template="blank" name=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --template|-t) [ $# -ge 2 ] || usage_die "--template 需要一个值"; template="$2"; shift 2 ;;
+            --template=*) template="${1#*=}"; shift ;;
+            --name) [ $# -ge 2 ] || usage_die "--name 需要一个值"; name="$2"; shift 2 ;;
+            --name=*) name="${1#*=}"; shift ;;
+            -*) usage_die "未知选项 $1" ;;
+            *) [ -z "$id" ] || usage_die "多余的参数 $1"; id="$1"; shift ;;
+        esac
+    done
+    check_id "$id"
+    local src="$EXAMPLES_DIR/$template"
+    if [ ! -f "$src/plugin.json" ]; then
+        die $E_USAGE "没有名为「$template」的模板。可用模板：$(templates_list | tr '\n' ' ')"
+    fi
+    local dir; dir="$(plugin_dir "$id")"
+    if [ -e "$dir" ]; then
+        die $E_FAIL "卡片 $id 已存在（$dir）。直接编辑它的 plugin.json，或换一个 id。"
+    fi
+    mkdir -p "$PLUGINS_DIR" || die $E_FAIL "无法创建 $PLUGINS_DIR"
+    local staging="$PLUGINS_DIR/.new-$id-$$"
+    rm -rf -- "$staging"
+    mkdir -p "$staging" || die $E_FAIL "无法创建目录"
+    _tmpfiles+=("$staging")
+    cp -R "$src/." "$staging/" || die $E_FAIL "无法复制模板"
+    rm -f -- "$staging/local.json"
+    if ! jq --arg id "$id" --arg name "$name" '.id = $id | (if $name != "" then .name = $name | (if (.card | type) == "object" and (.card.title // "") != "" then .card.title = $name else . end) else . end)' \
+        "$src/plugin.json" > "$staging/plugin.json"; then
+        die $E_FAIL "无法写入 plugin.json"
+    fi
+    mv -- "$staging" "$dir" || die $E_FAIL "无法创建 $dir"
+    local trust; trust="$(jq -r "$JQ_TRUST"' hxtrust' "$dir/plugin.json")"
+    if [ "$JSON" = 1 ]; then
+        notify_reload >/dev/null
+        jq -cn --arg id "$id" --arg dir "$dir" --arg t "$template" --arg trust "$trust" --argjson r "$RELOADED" \
+            '{ok:true, id:$id, template:$t, file:($dir + "/plugin.json"), trust:$trust, reloaded:$r}'
+        return 0
+    fi
+    printf '已创建卡片 %s（模板 %s）\n  %s/plugin.json\n' "$id" "$template" "$dir"
+    printf '下一步：\n'
+    printf '  1. 编辑 plugin.json（参考 %s/plugins.md 与 %s/cookbook.md）\n' "$DOCS_DIR" "$DOCS_DIR"
+    if jq -e '(.params // {}) | length > 0' "$dir/plugin.json" >/dev/null 2>&1; then
+        printf '  2. 填写本机参数：hx plugin params %s 名称=值（例如端口、日志路径）\n' "$id"
+    else
+        printf '  2. （这个模板没有参数）\n'
+    fi
+    printf '  3. hx plugin validate %s\n  4. hx plugin preview %s\n' "$id" "$id"
+    printf '卡片会自动出现在 HaniyaX 首页。\n'
+    if [ "$trust" = runs-commands ]; then
+        printf '注意：这张卡片会运行命令。完成后请告诉用户：在 HaniyaX 首页点开这张卡片，查看命令并点「允许运行这些命令」。Agent 无法代为允许。\n'
+    fi
+    notify_reload
+}
+
+# Resolves the argument of validate: sets V_FILE (plugin.json) and V_ID.
+resolve_manifest_arg() {
+    local a="$1"
+    V_FILE=""; V_ID=""
+    if [[ "$a" =~ $ID_RE ]] && [ ! -e "$a" ]; then
+        V_ID="$a"; V_FILE="$(plugin_dir "$a")/plugin.json"
+        [ -f "$V_FILE" ] || die $E_NOTFOUND "没有 id 为 $a 的卡片（$V_FILE 不存在）"
+        V_DISK=true
+        return 0
+    fi
+    if [ -d "$a" ]; then
+        V_FILE="$(cd "$a" && pwd)/plugin.json"
+    elif [ -f "$a" ]; then
+        V_FILE="$(cd "$(dirname "$a")" && pwd)/$(basename "$a")"
+    else
+        die $E_NOTFOUND "找不到 $a（既不是已安装的卡片 id，也不是目录或文件）"
+    fi
+    [ -f "$V_FILE" ] || die $E_NOTFOUND "找不到 $V_FILE"
+    local fid dirname
+    fid="$(jq -r 'if type == "object" then (.id // "") else "" end' "$V_FILE" 2>/dev/null)"
+    dirname="$(basename "$(dirname "$V_FILE")")"
+    if [[ "$fid" =~ $ID_RE ]]; then V_ID="$fid"
+    elif [[ "$dirname" =~ $ID_RE ]]; then V_ID="$dirname"
+    else V_ID="draft"
+    fi
+    # A plugin.json inside the plugins dir is validated as installed (dir name must equal id).
+    if [ "$(dirname "$(dirname "$V_FILE")")" = "$(cd "$PLUGINS_DIR" 2>/dev/null && pwd)" ]; then
+        V_ID="$dirname"; V_DISK=true
+    else
+        V_DISK=false
+    fi
+}
+
+cmd_plugin_validate() {
+    need_jq
+    [ $# -ge 1 ] || usage_die "用法：hx plugin validate <id|目录|plugin.json>"
+    resolve_manifest_arg "$1"
+    local id="$V_ID" f="$V_FILE"
+    if [ "$(wc -c < "$f")" -gt 262144 ]; then die $E_FAIL "plugin.json 超过 256 KB"; fi
+    local reached=false
+    if [ "$V_DISK" = true ]; then api POST "/v1/plugins/$id/validate" && reached=true
+    else api POST "/v1/plugins/$id/validate" "$f" && reached=true
+    fi
+    if [ "$reached" = true ] && api_ok; then
+        if [ "$JSON" = 1 ]; then cat "$API_OUT"; echo
+        else
+            jq -r --arg f "$f" '
+              def tl: if . == "display-only" then "仅展示" elif . == "runs-commands" then "可执行命令" else . end;
+              (if .ok then "✓ \(.id)：有效（\(.trust | tl)）" else "✗ \(.id)：发现 \(.errors | length) 处错误" end),
+              "  文件：\($f)",
+              (.errors[] | "  - \(.)"),
+              (if (.warnings | length) > 0 then "提示：", (.warnings[] | "  - \(.)") else empty end),
+              (if (.missingParams | length) > 0 then "缺少参数：\(.missingParams | join("、"))（hx plugin params \(.id) 名称=值）" else empty end),
+              (if (.commands | length) > 0 then "会运行的命令（参数已代入，需要用户在 HaniyaX 中允许）：", (.commands[] | "  [\(.where)] \(.run)" + (if .cwd then "   （目录 \(.cwd)）" else "" end)) else empty end),
+              (if (.note // "") != "" then .note else empty end)
+            ' "$API_OUT"
+        fi
+        jq -e '.ok' "$API_OUT" >/dev/null && return 0 || exit $E_FAIL
+    fi
+    if [ "$reached" = true ] && [ "$API_STATUS" != 200 ]; then
+        api_require_ok
+    fi
+    # Offline structural check.
+    local expect=""
+    [ "$V_DISK" = true ] && expect="$id"
+    local errs
+    if ! jq -e . "$f" >/dev/null 2>&1; then
+        local why; why="$(jq . "$f" 2>&1 >/dev/null | head -n 1)"
+        errs="$(jq -cn --arg e "plugin.json 不是有效的 JSON：$why" '[$e]')"
+    else
+        errs="$(jq -c --arg dir "$expect" "$JQ_VALIDATE" "$f")" || die $E_FAIL "校验失败（jq 出错）"
+    fi
+    local trust; trust="$(jq -r "$JQ_TRUST"' hxtrust' "$f" 2>/dev/null || printf 'runs-commands')"
+    local n; n="$(jq 'length' <<<"$errs")"
+    if [ "$JSON" = 1 ]; then
+        jq -cn --arg id "$id" --argjson e "$errs" --arg t "$trust" --arg why "$API_ERR" \
+            '{ok:($e | length == 0), id:$id, source:"offline", trust:$t, errors:$e, warnings:[], note:("HaniyaX 未连接，只做了基础检查：" + $why)}'
+    else
+        if [ "$n" = 0 ]; then printf '✓ %s：基础检查通过（%s）\n' "$id" "$(trust_label "$trust")"
+        else printf '✗ %s：发现 %s 处错误\n' "$id" "$n"
+        fi
+        printf '  文件：%s\n' "$f"
+        jq -r '.[] | "  - \(.)"' <<<"$errs"
+        printf '（HaniyaX 未连接，只做了基础检查；App 运行时 hx plugin validate 会做完整校验）\n'
+    fi
+    [ "$n" = 0 ] || exit $E_FAIL
+}
+
+cmd_plugin_preview() {
+    need_jq
+    local id="$1"; check_id "$id"
+    if ! api GET "/v1/plugins/$id/preview$( [ "$JSON" = 1 ] && printf '?format=json')" "" "$( [ "$JSON" = 1 ] && printf 'application/json' || printf 'text/plain')"; then
+        die $E_NOAPP "预览需要 HaniyaX 在运行：$API_ERR"
+    fi
+    api_require_ok
+    cat "$API_OUT"
+    [ "$JSON" = 1 ] && echo
+    return 0
+}
+
+# Copies plugin directory $1 into plugins/<id>, keeping an existing local.json. Echoes the id.
+install_dir() {
+    local src="$1"
+    [ -f "$src/plugin.json" ] || die $E_FAIL "$src 中没有 plugin.json"
+    jq -e 'type == "object"' "$src/plugin.json" >/dev/null 2>&1 || die $E_FAIL "plugin.json 不是有效的 JSON 对象"
+    local id; id="$(jq -r '.id // empty' "$src/plugin.json")"
+    [[ "$id" =~ $ID_RE ]] && [ ${#id} -le 64 ] || die $E_FAIL "plugin.json 中的 id「$id」无效（需要 kebab-case，例如 my-card）"
+    local size; size="$(du -sk "$src" 2>/dev/null | awk '{print $1}')"
+    [ -z "$size" ] || [ "$size" -le 4096 ] || die $E_FAIL "卡片目录超过 4 MB"
+    local target; target="$(plugin_dir "$id")"
+    local src_abs target_abs=""
+    src_abs="$(cd "$src" && pwd)"
+    [ -d "$target" ] && target_abs="$(cd "$target" && pwd)"
+    if [ "$src_abs" = "$target_abs" ]; then
+        INSTALLED_ID="$id"; INSTALL_REPLACED=false; return 0
+    fi
+    if [ -e "$target" ] && [ "$FORCE" != 1 ]; then
+        die $E_FAIL "已有 id 为 $id 的卡片（$target）。确认要替换请加 --force（本机参数 local.json 会保留）。"
+    fi
+    mkdir -p "$PLUGINS_DIR" || die $E_FAIL "无法创建 $PLUGINS_DIR"
+    local staging="$PLUGINS_DIR/.install-$id-$$" old="$PLUGINS_DIR/.old-$id-$$"
+    rm -rf -- "$staging" "$old"
+    _tmpfiles+=("$staging" "$old")
+    mkdir -p "$staging" && cp -R "$src/." "$staging/" || die $E_FAIL "无法复制卡片文件"
+    rm -f -- "$staging/local.json"
+    rm -rf -- "$staging/.git"
+    INSTALL_REPLACED=false
+    if [ -e "$target" ]; then
+        [ -f "$target/local.json" ] && cp -p -- "$target/local.json" "$staging/local.json"
+        mv -- "$target" "$old" || die $E_FAIL "无法替换已有的卡片目录"
+        INSTALL_REPLACED=true
+    fi
+    if ! mv -- "$staging" "$target"; then
+        [ -e "$old" ] && mv -- "$old" "$target"
+        die $E_FAIL "无法写入 $target"
+    fi
+    rm -rf -- "$old"
+    INSTALLED_ID="$id"
+}
+
+# Lists zip entries (one per line) using unzip.
+zip_entries() { unzip -Z1 "$1" 2>/dev/null; }
+
+extract_hxcard() {
+    local file="$1" dest="$2"
+    have unzip || die $E_FAIL "需要 unzip，请先运行：apt-get install -y unzip"
+    local entries; entries="$(zip_entries "$file")" || die $E_FAIL "这不是有效的 .hxcard 或 .zip 文件"
+    [ -n "$entries" ] || die $E_FAIL "压缩包是空的"
+    local count; count="$(printf '%s\n' "$entries" | wc -l)"
+    [ "$count" -le 64 ] || die $E_FAIL "压缩包中的文件过多（最多 64 个）"
+    local e
+    while IFS= read -r e; do
+        case "$e" in
+            /*|*\\*|..|../*|*/../*|*/..) die $E_FAIL "压缩包中的路径不安全：$e" ;;
+            [A-Za-z]:*) die $E_FAIL "压缩包中包含绝对路径：$e" ;;
+        esac
+        if [[ "$e" == *[[:cntrl:]]* ]]; then die $E_FAIL "压缩包中的文件名包含控制字符"; fi
+    done <<<"$entries"
+    # Symlink entries could redirect later entries outside the target directory: refuse them outright.
+    if unzip -Z "$file" 2>/dev/null | grep -q '^l'; then die $E_FAIL "压缩包中包含符号链接，已拒绝导入"; fi
+    local total; total="$(unzip -l "$file" 2>/dev/null | tail -n 1 | awk '{print $1}')"
+    [[ "$total" =~ ^[0-9]+$ ]] || die $E_FAIL "无法读取压缩包"
+    [ "$total" -le 4194304 ] || die $E_FAIL "压缩包解压后超过 4 MB"
+    unzip -q -o "$file" -d "$dest" -x 'local.json' '*/local.json' '__MACOSX/*' >/dev/null 2>&1 \
+        || unzip -q -o "$file" -d "$dest" >/dev/null 2>&1 || die $E_FAIL "解压失败"
+    # Never follow symlinks that came out of an archive.
+    find "$dest" -type l -delete 2>/dev/null
+    find "$dest" -name local.json -type f -delete 2>/dev/null
+    rm -rf -- "$dest/__MACOSX"
+    if [ -f "$dest/plugin.json" ]; then EXTRACTED="$dest"; return 0; fi
+    local found=() d
+    for d in "$dest"/*/; do [ -f "$d/plugin.json" ] && found+=("${d%/}"); done
+    [ ${#found[@]} -eq 1 ] || die $E_FAIL "压缩包中没有找到 plugin.json"
+    EXTRACTED="${found[0]}"
+}
+
+cmd_plugin_install() {
+    need_jq
+    local src=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --force|-f) FORCE=1; shift ;;
+            -*) usage_die "未知选项 $1" ;;
+            *) [ -z "$src" ] || usage_die "多余的参数 $1"; src="$1"; shift ;;
+        esac
+    done
+    [ -n "$src" ] || usage_die "用法：hx plugin install <目录|文件.hxcard> [--force]"
+    local dir
+    if [ -d "$src" ]; then dir="$src"
+    elif [ -f "$src" ]; then
+        if [ "$(basename "$src")" = plugin.json ]; then dir="$(dirname "$src")"
+        else
+            new_tmpdir || die $E_FAIL "无法创建临时目录"
+            extract_hxcard "$src" "$TMP_PATH"
+            dir="$EXTRACTED"
+        fi
+    else
+        die $E_NOTFOUND "找不到 $src"
+    fi
+    install_dir "$dir"
+    local id="$INSTALLED_ID" target; target="$(plugin_dir "$INSTALLED_ID")"
+    local trust hasparams
+    trust="$(jq -r "$JQ_TRUST"' hxtrust' "$target/plugin.json")"
+    hasparams="$(jq -r '((.params // {}) | length) > 0' "$target/plugin.json")"
+    if [ "$JSON" = 1 ]; then
+        notify_reload >/dev/null
+        jq -cn --arg id "$id" --arg dir "$target" --arg trust "$trust" --argjson rep "$INSTALL_REPLACED" --argjson r "$RELOADED" --argjson p "$hasparams" \
+            '{ok:true, id:$id, dir:$dir, trust:$trust, replaced:$rep, hasParams:$p, reloaded:$r}'
+        return 0
+    fi
+    if [ "$INSTALL_REPLACED" = true ]; then printf '已替换卡片 %s（本机参数已保留）\n' "$id"
+    else printf '已安装卡片 %s\n' "$id"
+    fi
+    printf '  %s/plugin.json\n' "$target"
+    [ "$hasparams" = true ] && printf '这张卡片有参数：hx plugin params %s 查看，或让用户在 HaniyaX 中填写。\n' "$id"
+    [ "$trust" = runs-commands ] && printf '这张卡片会运行命令：请告诉用户在 HaniyaX 首页点开它，查看命令并点「允许运行这些命令」。\n'
+    notify_reload
+}
+
+cmd_plugin_remove() {
+    local id=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --yes|-y) YES=1; shift ;;
+            -*) usage_die "未知选项 $1" ;;
+            *) [ -z "$id" ] || usage_die "多余的参数 $1"; id="$1"; shift ;;
+        esac
+    done
+    check_id "$id"
+    local dir; dir="$(plugin_dir "$id")"
+    [ -d "$dir" ] || die $E_NOTFOUND "没有 id 为 $id 的卡片（$dir 不存在）"
+    if [ "$YES" != 1 ]; then
+        if [ -t 0 ] && [ "$JSON" != 1 ]; then
+            printf '将删除卡片目录 %s（包括本机参数）。确定吗？[y/N] ' "$dir"
+            local ans; read -r ans
+            case "$ans" in y|Y|yes|YES) ;; *) info "已取消。"; exit $E_FAIL ;; esac
+        else
+            die $E_USAGE "移除卡片需要确认：加 --yes（会删除 $dir，包括本机参数）"
+        fi
+    fi
+    rm -rf -- "$dir" || die $E_FAIL "无法删除 $dir"
+    if [ "$JSON" = 1 ]; then
+        notify_reload >/dev/null
+        jq -cn --arg id "$id" --argjson r "$RELOADED" '{ok:true, id:$id, removed:true, reloaded:$r}'
+        return 0
+    fi
+    printf '已移除卡片 %s\n' "$id"
+    notify_reload
+}
+
+cmd_plugin_export() {
+    need_jq
+    local id="$1" out="${2:-}"
+    check_id "$id"
+    require_plugin "$id"
+    [ -n "$out" ] || out="./$id.hxcard"
+    case "$out" in *.hxcard|*.zip) ;; *) out="$out.hxcard" ;; esac
+    if api GET "/v1/plugins/$id/export" "" "application/zip"; then
+        if ! api_ok; then api_require_ok; fi
+        cp -- "$API_OUT" "$out" || die $E_FAIL "无法写入 $out"
+    elif have zip; then
+        local dir; dir="$(plugin_dir "$id")"
+        local abs_out; abs_out="$(cd "$(dirname "$out")" && pwd)/$(basename "$out")" || die $E_FAIL "输出目录不存在"
+        rm -f -- "$abs_out"
+        (cd "$dir" && zip -q -r -X "$abs_out" . -x 'local.json' -x '.*' -x '*/.*') || die $E_FAIL "打包失败"
+    else
+        die $E_NOAPP "导出需要 HaniyaX 在运行（或先安装 zip：apt-get install -y zip）。$API_ERR"
+    fi
+    local bytes; bytes="$(wc -c < "$out" | tr -d ' ')"
+    if [ "$JSON" = 1 ]; then
+        jq -cn --arg id "$id" --arg out "$out" --argjson b "$bytes" '{ok:true, id:$id, file:$out, bytes:$b}'
+        return 0
+    fi
+    printf '已导出 %s → %s（%s 字节）\n' "$id" "$out" "$bytes"
+    printf '导出包不含本机参数（local.json）与确认记录；对方导入后需要自己填写参数、确认命令。\n'
+}
+
+cmd_plugin_params() {
+    need_jq
+    local id="$1"; shift || true
+    check_id "$id"
+    require_plugin "$id"
+    local dir; dir="$(plugin_dir "$id")"
+    local mf="$dir/plugin.json" lf="$dir/local.json"
+    jq -e 'type == "object"' "$mf" >/dev/null 2>&1 || die $E_FAIL "plugin.json 不是有效的 JSON，先修正它（hx plugin validate $id）"
+    local local_json='{}'
+    if [ -f "$lf" ]; then
+        local_json="$(jq -c 'if type == "object" then . else {} end' "$lf" 2>/dev/null)" || {
+            warn "local.json 不是有效的 JSON，将重新写入"; local_json='{}'; }
+    fi
+    if [ $# -eq 0 ]; then
+        if [ "$JSON" = 1 ]; then
+            jq -c --argjson l "$local_json" '{ok:true, params: ((.params // {}) | with_entries(.value = {type:.value.type, label:(.value.label // .key), default:.value.default, value:($l.params[.key] // .value.default), local:(($l.params // {}) | has(.key))}))}' "$mf"
+            return 0
+        fi
+        local n; n="$(jq '(.params // {}) | length' "$mf")"
+        if [ "$n" = 0 ]; then info "卡片 $id 没有声明参数。"; return 0; fi
+        jq -r --argjson l "$local_json" '
+          (.params // {}) | to_entries[] |
+          .key as $k | (($l.params // {}) | has($k)) as $isLocal |
+          "\($k) (\(.value.type))  \(.value.label // $k)",
+          "    当前：\(if $isLocal then ($l.params[$k] | tostring) + "  [本机]" elif .value.default != null then (.value.default | tostring) + "  [默认]" else "（未设置，必填）" end)",
+          (if (.value.description // "") != "" then "    说明：\(.value.description)" else empty end)
+        ' "$mf"
+        printf '设置：hx plugin params %s 名称=值    恢复默认：hx plugin params %s 名称=\n' "$id" "$id"
+        return 0
+    fi
+    local updates='{}' removes='[]' kv key val type
+    for kv in "$@"; do
+        [[ "$kv" == *=* ]] || usage_die "参数要写成 名称=值：$kv"
+        key="${kv%%=*}"; val="${kv#*=}"
+        [[ "$key" =~ $PARAM_RE ]] || die $E_USAGE "参数名无效：$key"
+        type="$(jq -r --arg k "$key" '(.params // {})[$k].type // empty' "$mf")"
+        [ -n "$type" ] || die $E_FAIL "plugin.json 中没有声明参数 $key（可用：$(jq -r '(.params // {}) | keys | join("、")' "$mf")）"
+        if [ -z "$val" ]; then
+            removes="$(jq -c --arg k "$key" '. + [$k]' <<<"$removes")"; continue
+        fi
+        case "$type" in
+            number)
+                [[ "$val" =~ ^-?[0-9]+(\.[0-9]+)?$ ]] || die $E_FAIL "参数 $key 需要是数字：$val"
+                updates="$(jq -c --arg k "$key" --arg v "$val" '. + {($k): ($v | tonumber)}' <<<"$updates")" ;;
+            boolean)
+                case "$val" in
+                    true|yes|on|1) val=true ;; false|no|off|0) val=false ;;
+                    *) die $E_FAIL "参数 $key 需要是 true 或 false：$val" ;;
+                esac
+                updates="$(jq -c --arg k "$key" --argjson v "$val" '. + {($k): $v}' <<<"$updates")" ;;
+            *)
+                updates="$(jq -c --arg k "$key" --arg v "$val" '. + {($k): $v}' <<<"$updates")" ;;
+        esac
+    done
+    local tmp="$dir/.local.json.hx.$$"
+    _tmpfiles+=("$tmp")
+    ( umask 077; jq --argjson u "$updates" --argjson r "$removes" \
+        '.params = (((.params // {}) | if type == "object" then . else {} end) + $u | delpaths([$r[] | [.]]))' <<<"$local_json" > "$tmp" ) \
+        || die $E_FAIL "无法写入 local.json"
+    mv -- "$tmp" "$lf" || die $E_FAIL "无法写入 $lf"
+    local trust; trust="$(jq -r "$JQ_TRUST"' hxtrust' "$mf")"
+    if [ "$JSON" = 1 ]; then
+        notify_reload >/dev/null
+        jq -c --argjson r "$RELOADED" --arg trust "$trust" '{ok:true, params:.params, trust:$trust, reloaded:$r}' "$lf"
+        return 0
+    fi
+    printf '已保存本机参数（%s）：\n' "$lf"
+    jq -r '.params | to_entries[] | "  \(.key) = \(.value | tostring)"' "$lf"
+    if [ "$trust" = runs-commands ]; then
+        printf '提示：如果这些参数用在命令里，命令会随之改变，需要用户在 HaniyaX 中重新确认。\n'
+    fi
+    notify_reload
+}
+
+cmd_plugin_edit_hint() {
+    local id="$1"; check_id "$id"
+    require_plugin "$id"
+    local dir; dir="$(plugin_dir "$id")"
+    if [ "$JSON" = 1 ]; then
+        printf '{"ok":true,"id":%s,"file":%s,"local":%s,"docs":%s,"schema":%s,"steps":["edit plugin.json and bump version","hx plugin validate %s","hx plugin preview %s"]}\n' \
+            "$(json_str "$id")" "$(json_str "$dir/plugin.json")" "$(json_str "$dir/local.json")" "$(json_str "$DOCS_DIR/plugins.md")" "$(json_str "$DOCS_DIR/plugin.schema.json")" "$id" "$id"
+        return 0
+    fi
+    cat <<EOF
+修改首页卡片 $id：
+
+  文件      $dir/plugin.json
+            直接编辑即可；保存后 HaniyaX 约 2 秒内自动重新读取，首页卡片随之更新。
+  参考      $DOCS_DIR/plugins.md（字段说明）
+            $DOCS_DIR/cookbook.md（常见卡片的写法）
+            $DOCS_DIR/plugin.schema.json（JSON Schema）
+
+  步骤
+    1. 编辑 plugin.json；有实际改动时把 version 加一（例如 1.0.0 → 1.0.1）。
+    2. hx plugin validate $id      逐条修正报出的错误（错误带有字段路径）。
+    3. hx plugin preview $id       查看卡片在当前实时数据下的文本渲染。
+
+  规则
+    · 不要修改 id（它必须与目录名一致）。
+    · 项目路径、端口等本机取值放在参数里：plugin.json 只写 params 的声明和通用默认值，
+      本机取值用 hx plugin params $id 名称=值 写入 local.json（导出分享时不会带走）。
+    · 不要把令牌、密码写进卡片；需要凭据的命令请读取环境变量或用户自己的配置文件。
+    · 含 command 数据源或 command / terminal / service 动作的卡片属于「可执行命令」。
+      命令（或命令里用到的参数）一旦改变，需要用户在 HaniyaX 中重新确认。
+      确认记录只保存在 App 内部、不在工作区中，Agent 无法也不应尝试代为确认——请直接告诉用户去确认。
+EOF
+    if have jq && api GET "/v1/plugins/$id" && api_ok; then
+        printf '\n当前状态：%s · %s' "$(trust_label "$(jq -r '.trust' "$API_OUT")")" "$(approval_label "$(jq -r '.approval' "$API_OUT")")"
+        local ne; ne="$(jq '.errors | length' "$API_OUT")"
+        [ "$ne" != 0 ] && printf ' · %s 处错误' "$ne"
+        printf '\n'
+    fi
+}
+
+cmd_plugin_reload() {
+    need_jq
+    api_or_die POST /v1/reload
+    api_require_ok
+    if [ "$JSON" = 1 ]; then cat "$API_OUT"; echo; return 0; fi
+    printf '已重新读取（%s 张卡片）\n' "$(jq -r '.plugins' "$API_OUT")"
+}
+
+cmd_plugin() {
+    local sub="${1:-help}"; shift || true
+    case "$sub" in
+        list|ls) cmd_plugin_list "$@" ;;
+        show|info) [ $# -ge 1 ] || usage_die "用法：hx plugin show <id>"; cmd_plugin_show "$1" ;;
+        new|create) cmd_plugin_new "$@" ;;
+        validate|check) cmd_plugin_validate "$@" ;;
+        preview) [ $# -ge 1 ] || usage_die "用法：hx plugin preview <id>"; cmd_plugin_preview "$1" ;;
+        install|import) cmd_plugin_install "$@" ;;
+        remove|rm|uninstall) cmd_plugin_remove "$@" ;;
+        export) [ $# -ge 1 ] || usage_die "用法：hx plugin export <id> [输出.hxcard]"; cmd_plugin_export "$@" ;;
+        params|param) [ $# -ge 1 ] || usage_die "用法：hx plugin params <id> [名称=值 …]"; cmd_plugin_params "$@" ;;
+        edit-hint|edit) [ $# -ge 1 ] || usage_die "用法：hx plugin edit-hint <id>"; cmd_plugin_edit_hint "$1" ;;
+        reload) cmd_plugin_reload ;;
+        templates) templates_list ;;
+        help|-h|--help) print_help ;;
+        *) usage_die "未知的 plugin 子命令：$sub" ;;
+    esac
+}
+
+# ----------------------------------------------------------------------------- services
+
+check_service_name() {
+    [ -n "$1" ] || usage_die "缺少服务名"
+    [[ "$1" =~ $SERVICE_RE ]] || die $E_USAGE "服务名「$1」无效：只能包含字母、数字、点、横线和下划线，最多 64 个字符"
+}
+
+cmd_service_list() {
+    need_jq
+    if api GET /v1/services && api_ok; then
+        if [ "$JSON" = 1 ]; then jq -c '. + {connected:true}' "$API_OUT"; return 0; fi
+        local n; n="$(jq '.services | length' "$API_OUT")"
+        if [ "$n" = 0 ]; then info "还没有登记后台服务。用 hx service add --name web --cmd 'npm run dev' --port 3000 登记一个。"; return 0; fi
+        local name status addr cmd cwd
+        while IFS=$'\x1f' read -r name status addr cmd cwd; do
+            printf '%s  %s%s\n    %s   （%s）\n' "$name" "$(service_status_label "$status")" "${addr:+  $addr}" "$cmd" "$cwd"
+        done < <(jq -r '.services[] | [.name, .status, (.address // ""), .command, .cwd] | map(tostring | gsub("[\u001f\n]"; " ")) | join("\u001f")' "$API_OUT")
+        return 0
+    fi
+    # Offline: the definition files.
+    local f out="[]" one
+    for f in "$SERVICES_DIR"/*.json; do
+        [ -f "$f" ] || continue
+        case "$(basename "$f")" in .*) continue ;; esac
+        one="$(jq -c --arg n "$(basename "$f" .json)" '{name:$n, command:(.command // ""), cwd:(.cwd // "/root"), port:.port, status:"unknown"}' "$f" 2>/dev/null)" \
+            || one="$(jq -cn --arg n "$(basename "$f" .json)" '{name:$n, command:"（文件无法解析）", cwd:"", port:null, status:"unknown"}')"
+        out="$(jq -c --argjson o "$one" '. + [$o]' <<<"$out")"
+    done
+    if [ "$JSON" = 1 ]; then jq -c '{ok:true, connected:false, services:.}' <<<"$out"; return 0; fi
+    if [ "$(jq length <<<"$out")" = 0 ]; then info "还没有登记后台服务。"; else
+        jq -r '.[] | "\(.name)\(if .port then "  端口 \(.port)" else "" end)\n    \(.command)   （\(.cwd)）"' <<<"$out"
+    fi
+    info "（HaniyaX 未连接：运行状态未知）"
+}
+
+cmd_service_add() {
+    need_jq
+    local name="" cmd="" cwd="$PWD" port="" health="" log="" autostart=false desc="" env='{}'
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --name) [ $# -ge 2 ] || usage_die "--name 需要一个值"; name="$2"; shift 2 ;;
+            --cmd|--command) [ $# -ge 2 ] || usage_die "--cmd 需要一个值"; cmd="$2"; shift 2 ;;
+            --cwd) [ $# -ge 2 ] || usage_die "--cwd 需要一个值"; cwd="$2"; shift 2 ;;
+            --port) [ $# -ge 2 ] || usage_die "--port 需要一个值"; port="$2"; shift 2 ;;
+            --health) [ $# -ge 2 ] || usage_die "--health 需要一个值"; health="$2"; shift 2 ;;
+            --log) [ $# -ge 2 ] || usage_die "--log 需要一个值"; log="$2"; shift 2 ;;
+            --description) [ $# -ge 2 ] || usage_die "--description 需要一个值"; desc="$2"; shift 2 ;;
+            --env) [ $# -ge 2 ] || usage_die "--env 需要 KEY=VALUE"
+                   [[ "$2" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]] || die $E_USAGE "--env 需要写成 KEY=VALUE：$2"
+                   env="$(jq -c --arg k "${2%%=*}" --arg v "${2#*=}" '. + {($k): $v}' <<<"$env")"; shift 2 ;;
+            --autostart) autostart=true; shift ;;
+            --force|-f) FORCE=1; shift ;;
+            *) usage_die "未知参数 $1" ;;
+        esac
+    done
+    check_service_name "$name"
+    [ -n "$cmd" ] || usage_die "缺少 --cmd（服务要运行的命令）"
+    case "$cwd" in "~") cwd="$HOME" ;; "~/"*) cwd="$HOME/${cwd#\~/}" ;; esac
+    case "$cwd" in /*) ;; *) cwd="$(cd "$cwd" 2>/dev/null && pwd)" || die $E_FAIL "目录不存在：$cwd" ;; esac
+    [ -d "$cwd" ] || warn "目录 $cwd 目前不存在，启动前请先创建"
+    if [ -n "$port" ]; then
+        [[ "$port" =~ ^[0-9]+$ ]] && [ "$port" -ge 1 ] && [ "$port" -le 65535 ] || die $E_USAGE "端口必须是 1 到 65535 之间的整数"
+    fi
+    if [ -n "$health" ]; then
+        case "$health" in /*) ;; *) die $E_USAGE "--health 必须以 / 开头，例如 /health" ;; esac
+        [ -n "$port" ] || die $E_USAGE "--health 需要同时指定 --port"
+    fi
+    local f="$SERVICES_DIR/$name.json"
+    if [ -e "$f" ] && [ "$FORCE" != 1 ]; then
+        die $E_FAIL "服务 $name 已存在（$f）。要覆盖请加 --force。"
+    fi
+    mkdir -p "$SERVICES_DIR" || die $E_FAIL "无法创建 $SERVICES_DIR"
+    local tmp="$SERVICES_DIR/.$name.json.hx.$$"
+    _tmpfiles+=("$tmp")
+    jq -n --arg name "$name" --arg cmd "$cmd" --arg cwd "$cwd" --arg port "$port" --arg health "$health" \
+        --arg log "$log" --arg desc "$desc" --argjson env "$env" --argjson auto "$autostart" '
+        {name:$name, command:$cmd, cwd:$cwd}
+        + (if $port != "" then {port: ($port | tonumber)} else {} end)
+        + (if $health != "" then {healthPath: $health} else {} end)
+        + (if $log != "" then {log: $log} else {} end)
+        + (if ($env | length) > 0 then {env: $env} else {} end)
+        + {autostart: $auto, owner: "hx"}
+        + (if $desc != "" then {description: $desc} else {} end)' > "$tmp" || die $E_FAIL "无法写入服务定义"
+    mv -- "$tmp" "$f" || die $E_FAIL "无法写入 $f"
+    if [ "$JSON" = 1 ]; then
+        notify_reload >/dev/null
+        jq -c --arg f "$f" --argjson r "$RELOADED" '{ok:true, file:$f, service:., reloaded:$r}' "$f"
+        return 0
+    fi
+    printf '已登记服务 %s\n  %s\n' "$name" "$f"
+    printf '  命令：%s\n  目录：%s\n' "$cmd" "$cwd"
+    [ -n "$port" ] && printf '  地址：http://127.0.0.1:%s%s\n' "$port" "$health"
+    printf '  日志：%s\n' "${log:-$LOGS_DIR/$name.log}"
+    notify_reload
+    printf '启动：hx service start %s（或在 HaniyaX 首页的「后台服务」里点启动）\n' "$name"
+}
+
+cmd_service_op() {
+    need_jq
+    local op="$1" name="$2"
+    check_service_name "$name"
+    api_or_die POST "/v1/services/$name/$op"
+    api_require_ok
+    if [ "$JSON" = 1 ]; then cat "$API_OUT"; echo; return 0; fi
+    case "$op" in
+        start) printf '正在启动 %s\n' "$name" ;;
+        stop) printf '正在停止 %s\n' "$name" ;;
+        restart) printf '正在重启 %s\n' "$name" ;;
+    esac
+    printf '查看状态：hx service list    查看日志：hx service logs %s\n' "$name"
+}
+
+cmd_service_logs() {
+    need_jq
+    local name="" n=20
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            -n|--lines) [ $# -ge 2 ] || usage_die "-n 需要一个数字"; n="$2"; shift 2 ;;
+            -n*) n="${1#-n}"; shift ;;
+            -*) usage_die "未知选项 $1" ;;
+            *) [ -z "$name" ] || usage_die "多余的参数 $1"; name="$1"; shift ;;
+        esac
+    done
+    check_service_name "$name"
+    [[ "$n" =~ ^[0-9]+$ ]] && [ "$n" -ge 1 ] || die $E_USAGE "-n 需要一个正整数"
+    if api GET "/v1/services/$name/logs?n=$n"; then
+        api_require_ok
+        if [ "$JSON" = 1 ]; then cat "$API_OUT"; echo; return 0; fi
+        jq -r '.lines[]' "$API_OUT"
+        return 0
+    fi
+    # Offline: read the log file directly.
+    local def="$SERVICES_DIR/$name.json" log
+    [ -f "$def" ] || die $E_NOTFOUND "没有名为 $name 的服务（$def 不存在）"
+    log="$(jq -r '.log // empty' "$def" 2>/dev/null)"
+    [ -n "$log" ] || log="$LOGS_DIR/$name.log"
+    case "$log" in "~/"*) log="$HOME/${log#\~/}" ;; esac
+    [ -f "$log" ] || die $E_NOTFOUND "还没有日志文件：$log"
+    if [ "$JSON" = 1 ]; then
+        tail -n "$n" -- "$log" | jq -R . | jq -sc --arg n "$name" '{ok:true, name:$n, connected:false, lines:.}'
+        return 0
+    fi
+    tail -n "$n" -- "$log"
+}
+
+cmd_service_remove() {
+    need_jq
+    local name="$1"
+    check_service_name "$name"
+    local f="$SERVICES_DIR/$name.json"
+    [ -f "$f" ] || die $E_NOTFOUND "没有名为 $name 的服务（$f 不存在）"
+    local stopped=false
+    if api POST "/v1/services/$name/stop" && api_ok; then stopped=true; fi
+    rm -f -- "$f" || die $E_FAIL "无法删除 $f"
+    if [ "$JSON" = 1 ]; then
+        notify_reload >/dev/null
+        jq -cn --arg n "$name" --argjson s "$stopped" --argjson r "$RELOADED" '{ok:true, name:$n, removed:true, stopped:$s, reloaded:$r}'
+        return 0
+    fi
+    printf '已移除服务 %s%s\n' "$name" "$( [ "$stopped" = true ] && printf '（已先停止）')"
+    notify_reload
+}
+
+cmd_service() {
+    local sub="${1:-help}"; shift || true
+    case "$sub" in
+        list|ls) cmd_service_list ;;
+        add) cmd_service_add "$@" ;;
+        start|stop|restart) [ $# -ge 1 ] || usage_die "用法：hx service $sub <名称>"; cmd_service_op "$sub" "$1" ;;
+        logs|log) cmd_service_logs "$@" ;;
+        remove|rm) [ $# -ge 1 ] || usage_die "用法：hx service remove <名称>"; cmd_service_remove "$1" ;;
+        help|-h|--help) print_help ;;
+        *) usage_die "未知的 service 子命令：$sub" ;;
+    esac
+}
+
+# ----------------------------------------------------------------------------- projects / tasks
+
+cmd_project() {
+    local sub="${1:-list}"
+    [ "$sub" = list ] || [ "$sub" = ls ] || usage_die "未知的 project 子命令：$sub"
+    need_jq
+    if api GET /v1/projects && api_ok; then
+        if [ "$JSON" = 1 ]; then cat "$API_OUT"; echo; return 0; fi
+        local n; n="$(jq '.projects | length' "$API_OUT")"
+        [ "$n" != 0 ] || { info "还没有项目。项目默认放在 ~/projects 下。"; return 0; }
+        jq -r '.projects[] | "\(.name)\(if .pinned then "  [固定]" else "" end)\(if .lastAgent then "  上次使用 \(.lastAgent)" else "" end)\n    \(.path)"' "$API_OUT"
+        return 0
+    fi
+    local d out="[]"
+    for d in "$HOME"/projects/*/; do
+        [ -d "$d" ] || continue
+        out="$(jq -c --arg p "${d%/}" --arg n "$(basename "$d")" '. + [{name:$n, path:$p}]' <<<"$out")"
+    done
+    if [ "$JSON" = 1 ]; then jq -c '{ok:true, connected:false, projects:.}' <<<"$out"; return 0; fi
+    jq -r '.[] | "\(.name)\n    \(.path)"' <<<"$out"
+    info "（HaniyaX 未连接：只列出了 ~/projects 下的目录）"
+}
+
+cmd_task() {
+    local sub="${1:-list}"
+    [ "$sub" = list ] || [ "$sub" = ls ] || usage_die "未知的 task 子命令：$sub"
+    need_jq
+    api_or_die GET /v1/tasks
+    api_require_ok
+    if [ "$JSON" = 1 ]; then cat "$API_OUT"; echo; return 0; fi
+    local n; n="$(jq '.tasks | length' "$API_OUT")"
+    [ "$n" != 0 ] || { info "没有任务。"; return 0; }
+    jq -r '
+      def sl: if . == "running" then "运行中" elif . == "exited" then "已结束" elif . == "killedbysystem" then "已被系统结束" else . end;
+      .tasks[] | "\(.title)  \(.status | sl)\(if .agentId then "  [\(.agentId)]" else "" end)\n    \(.cwd)   id \(.id)"' "$API_OUT"
+}
+
+# ----------------------------------------------------------------------------- main
+
+ARGS=()
+for a in "$@"; do
+    case "$a" in
+        --json) JSON=1 ;;
+        *) ARGS+=("$a") ;;
+    esac
+done
+set -- "${ARGS[@]}"
+
+cmd="${1:-help}"; shift || true
+case "$cmd" in
+    help|-h|--help) print_help ;;
+    version|--version|-V) cmd_version ;;
+    docs|doc) cmd_docs ;;
+    plugin|plugins|card|cards) cmd_plugin "$@" ;;
+    service|services|svc) cmd_service "$@" ;;
+    project|projects) cmd_project "$@" ;;
+    task|tasks) cmd_task "$@" ;;
+    *) usage_die "未知命令：$cmd" ;;
+esac

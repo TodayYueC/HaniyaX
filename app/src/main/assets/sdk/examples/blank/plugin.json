@@ -1,0 +1,18 @@
+{
+  "$schema": "/opt/haniyax/docs/plugin.schema.json",
+  "apiVersion": 1,
+  "id": "blank",
+  "name": "新卡片",
+  "version": "0.1.0",
+  "description": "从这里开始编辑你的卡片",
+  "icon": "puzzle",
+  "refresh": 15,
+  "sources": {},
+  "card": {
+    "title": "新卡片",
+    "blocks": [
+      { "type": "text", "value": "编辑 plugin.json 来设计这张卡片，完成后运行 hx plugin validate。", "style": "caption" }
+    ]
+  },
+  "actions": []
+}

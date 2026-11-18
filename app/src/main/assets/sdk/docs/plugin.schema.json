@@ -1,0 +1,1279 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://haniya.dev/x/plugin.schema.json",
+  "title": "HaniyaX 首页卡片 plugin.json（apiVersion 1）",
+  "description": "与 HaniyaX 内置解析器一致。另有几条无法用 Schema 表达的规则：id 必须等于目录名；模板中只能引用已声明的 params 与 sources；命令（command/terminal 的 run、cwd）只能引用 params；tap 必须是某个动作的 id；动作 id 不能重复。完整校验请用 hx plugin validate。",
+  "type": "object",
+  "required": [
+    "apiVersion",
+    "id",
+    "name",
+    "version",
+    "card"
+  ],
+  "patternProperties": {
+    "^x-": {}
+  },
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "apiVersion": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "maxLength": 64,
+      "description": "kebab-case，必须与目录名一致"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 60,
+      "pattern": "\\S",
+      "description": "卡片名称"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$",
+      "description": "语义化版本号"
+    },
+    "description": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "icon": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "图标名；未知名称会显示为 puzzle",
+      "examples": [
+        "arrow",
+        "bell",
+        "bot",
+        "bowl",
+        "branch",
+        "cal",
+        "camera",
+        "chart",
+        "check",
+        "chevD",
+        "chevL",
+        "chevR",
+        "chevU",
+        "clock",
+        "close",
+        "copy",
+        "cpu",
+        "db",
+        "diff",
+        "download",
+        "drag",
+        "drop",
+        "edit",
+        "expand",
+        "eye",
+        "eyeOff",
+        "flame",
+        "folder",
+        "globe",
+        "habit",
+        "heart",
+        "help",
+        "history",
+        "home",
+        "image",
+        "info",
+        "key",
+        "keyboard",
+        "layout",
+        "link",
+        "list",
+        "lock",
+        "logout",
+        "minus",
+        "moon",
+        "note",
+        "palette",
+        "paste",
+        "pause",
+        "pin",
+        "play",
+        "plug",
+        "plus",
+        "power",
+        "pulse",
+        "puzzle",
+        "qr",
+        "refresh",
+        "ruler",
+        "run",
+        "scale",
+        "search",
+        "send",
+        "server",
+        "shield",
+        "shieldAlert",
+        "shrink",
+        "sliders",
+        "spark",
+        "stop",
+        "target",
+        "terminal",
+        "timer",
+        "trash",
+        "upload",
+        "user",
+        "warn",
+        "zap"
+      ]
+    },
+    "params": {
+      "type": "object",
+      "maxProperties": 16,
+      "propertyNames": {
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/param"
+      }
+    },
+    "refresh": {
+      "type": "integer",
+      "minimum": 5,
+      "maximum": 86400,
+      "description": "数据刷新间隔（秒），默认 15"
+    },
+    "sources": {
+      "type": "object",
+      "maxProperties": 12,
+      "propertyNames": {
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/source"
+      }
+    },
+    "card": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "可包含模板 {{params.名称}} 与 {{sources.名称.字段}}"
+        },
+        "subtitle": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "可包含模板 {{params.名称}} 与 {{sources.名称.字段}}"
+        },
+        "blocks": {
+          "type": "array",
+          "maxItems": 24,
+          "items": {
+            "$ref": "#/$defs/block"
+          }
+        }
+      },
+      "patternProperties": {
+        "^x-": {}
+      },
+      "additionalProperties": false,
+      "required": [
+        "blocks"
+      ]
+    },
+    "actions": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "$ref": "#/$defs/action"
+      }
+    },
+    "tap": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "点按卡片时执行的动作 id"
+    }
+  },
+  "$defs": {
+    "block": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "status",
+            "text",
+            "kv",
+            "metric",
+            "log",
+            "progress",
+            "sparkline"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "status"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/block_status"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "text"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/block_text"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "kv"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/block_kv"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "metric"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/block_metric"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "log"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/block_log"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "progress"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/block_progress"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "sparkline"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/block_sparkline"
+          }
+        }
+      ]
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "port",
+            "http",
+            "file",
+            "process",
+            "command"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "port"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/source_port"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "http"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/source_http"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "file"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/source_file"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "process"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/source_process"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "command"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/source_command"
+          }
+        }
+      ]
+    },
+    "action": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "sheet",
+            "command",
+            "terminal",
+            "openUrl",
+            "service"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "sheet"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/action_sheet"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "command"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/action_command"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "terminal"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/action_terminal"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "openUrl"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/action_openUrl"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "service"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/action_service"
+          }
+        }
+      ]
+    },
+    "param": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": [
+            "string",
+            "number",
+            "path",
+            "boolean"
+          ]
+        },
+        "label": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "显示名，默认为参数名"
+        },
+        "default": {
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "description": "默认值，类型必须与 type 一致（path 与 string 用字符串）"
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "patternProperties": {
+        "^x-": {}
+      },
+      "additionalProperties": false,
+      "required": [
+        "type"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "number"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "default": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "boolean"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "default": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "string",
+                  "path"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "default": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "block_status": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "status"
+        },
+        "source": {
+          "type": "string",
+          "description": "数据源名称"
+        },
+        "ok": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "正常时显示的文字（默认「正常」）。可包含模板 {{params.名称}} 与 {{sources.名称.字段}}"
+        },
+        "fail": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "异常时显示的文字（默认「不可用」）。可包含模板 {{params.名称}} 与 {{sources.名称.字段}}"
+        },
+        "okWhen": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^\\s*(ok|!ok|nonempty|empty|contains:.*|equals:.*|matches:.*|gt:\\s*-?[0-9]+(\\.[0-9]+)?([eE][+-]?[0-9]+)?|lt:\\s*-?[0-9]+(\\.[0-9]+)?([eE][+-]?[0-9]+)?)\\s*$",
+          "description": "判断正常的条件，默认 ok"
+        }
+      },
+      "patternProperties": {
+        "^x-": {}
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "source"
+      ]
+    },
+    "block_text": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "text"
+        },
+        "value": {
+          "type": "string",
+          "description": "可包含模板 {{params.名称}} 与 {{sources.名称.字段}}"
+        },
+        "style": {
+          "enum": [
+            "body",
+            "caption",
+            "mono"
+          ],
+          "default": "body"
+        }
+      },
+      "patternProperties": {
+        "^x-": {}
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "value"
+      ]
+    },
+    "block_kv": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "kv"
+        },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 12,
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "description": "可包含模板 {{params.名称}} 与 {{sources.名称.字段}}"
+              },
+              "value": {
+                "type": "string",
+                "description": "可包含模板 {{params.名称}} 与 {{sources.名称.字段}}"
+              }
+            },
+            "patternProperties": {
+              "^x-": {}
+            },
+            "additionalProperties": false,
+            "required": [
+              "label",
+              "value"
+            ]
+          }
+        }
+      },
+      "patternProperties": {
+        "^x-": {}
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "items"
+      ]
+    },
+    "block_metric": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "metric"
+        },
+        "label": {
+          "type": "string",
+          "description": "可包含模板 {{params.名称}} 与 {{sources.名称.字段}}"
+        },
+        "value": {
+          "type": "string",
+          "description": "可包含模板 {{params.名称}} 与 {{sources.名称.字段}}"
+        },
+        "unit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "patternProperties": {
+        "^x-": {}
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "label",
+        "value"
+      ]
+    },
+    "block_log": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "log"
+        },
+        "source": {
+          "type": "string",
+          "description": "数据源名称"
+        },
+        "lines": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200,
+          "description": "显示最后多少行，默认 20"
+        }
+      },
+      "patternProperties": {
+        "^x-": {}
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "source"
+      ]
+    },
+    "block_progress": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "progress"
+        },
+        "value": {
+          "type": "string",
+          "description": "0..1 的小数、42% 或 3/4。可包含模板 {{params.名称}} 与 {{sources.名称.字段}}"
+        },
+        "label": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "可包含模板 {{params.名称}} 与 {{sources.名称.字段}}"
+        }
+      },
+      "patternProperties": {
+        "^x-": {}
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "value"
+      ]
+    },
+    "block_sparkline": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "sparkline"
+        },
+        "source": {
+          "type": "string",
+          "description": "数据源名称：每行一个数字（取每行最后一个数）"
+        },
+        "label": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "可包含模板 {{params.名称}} 与 {{sources.名称.字段}}"
+        }
+      },
+      "patternProperties": {
+        "^x-": {}
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "source"
+      ]
+    },
+    "source_port": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "port"
+        },
+        "port": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            },
+            {
+              "type": "string",
+              "pattern": "^(\\s*[0-9]{1,5}\\s*|.*\\{\\{.*)$",
+              "description": "{{params.名称}} 或数字字符串"
+            }
+          ]
+        },
+        "host": {
+          "enum": [
+            "127.0.0.1",
+            "localhost",
+            "::1"
+          ],
+          "default": "127.0.0.1"
+        }
+      },
+      "patternProperties": {
+        "^x-": {}
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "port"
+      ]
+    },
+    "source_http": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "http"
+        },
+        "url": {
+          "type": "string",
+          "pattern": "^http://(127\\.0\\.0\\.1|localhost|\\[::1\\])([:/?#]|$)",
+          "description": "只能是本机地址。可包含模板 {{params.名称}}（不能引用 sources）"
+        },
+        "expectStatus": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 599,
+          "description": "期望的状态码；默认 200–399 视为正常"
+        },
+        "jsonPath": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "从 JSON 响应中取值，例如 data.items[0].name"
+        }
+      },
+      "patternProperties": {
+        "^x-": {}
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "url"
+      ]
+    },
+    "source_file": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "file"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "工作区内的路径，支持 ~/；相对路径以卡片目录为基准。可包含模板 {{params.名称}}（不能引用 sources）"
+        },
+        "tail": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "description": "只取最后 n 行"
+        },
+        "maxBytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1048576,
+          "description": "最多从文件末尾读取的字节数，默认 65536"
+        }
+      },
+      "patternProperties": {
+        "^x-": {}
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "path"
+      ]
+    },
+    "source_process": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "process"
+        },
+        "match": {
+          "type": "string",
+          "minLength": 1,
+          "description": "pgrep -f 的匹配模式。可包含模板 {{params.名称}}（不能引用 sources）"
+        }
+      },
+      "patternProperties": {
+        "^x-": {}
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "match"
+      ]
+    },
+    "source_command": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "command"
+        },
+        "run": {
+          "type": "string",
+          "minLength": 1,
+          "description": "bash 命令（需要用户在 App 中确认）。可包含模板 {{params.名称}}（不能引用 sources），参数值会自动加引号"
+        },
+        "cwd": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "工作目录。可包含模板 {{params.名称}}（不能引用 sources）"
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 300,
+          "description": "秒，默认 10"
+        },
+        "parse": {
+          "enum": [
+            "text",
+            "json",
+            "lines"
+          ],
+          "default": "text"
+        }
+      },
+      "patternProperties": {
+        "^x-": {}
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "run"
+      ]
+    },
+    "action_sheet": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,40}$",
+          "description": "动作 id"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "description": "按钮文字"
+        },
+        "icon": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "图标名（见 icons）；未知名称会被忽略"
+        },
+        "type": {
+          "const": "sheet"
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "可包含模板 {{params.名称}} 与 {{sources.名称.字段}}"
+        },
+        "blocks": {
+          "type": "array",
+          "maxItems": 24,
+          "items": {
+            "$ref": "#/$defs/block"
+          }
+        }
+      },
+      "patternProperties": {
+        "^x-": {}
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "type",
+        "blocks"
+      ]
+    },
+    "action_command": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,40}$",
+          "description": "动作 id"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "description": "按钮文字"
+        },
+        "icon": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "图标名（见 icons）；未知名称会被忽略"
+        },
+        "type": {
+          "const": "command"
+        },
+        "run": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "description": "bash 命令（需要确认）。可包含模板 {{params.名称}}（不能引用 sources）"
+        },
+        "cwd": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "可包含模板 {{params.名称}}（不能引用 sources）"
+        },
+        "confirm": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "default": false
+        },
+        "showOutput": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "default": true
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 600,
+          "description": "秒，默认 60"
+        }
+      },
+      "patternProperties": {
+        "^x-": {}
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "type",
+        "run"
+      ]
+    },
+    "action_terminal": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,40}$",
+          "description": "动作 id"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "description": "按钮文字"
+        },
+        "icon": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "图标名（见 icons）；未知名称会被忽略"
+        },
+        "type": {
+          "const": "terminal"
+        },
+        "run": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "description": "在新终端标签中运行的命令（需要确认）。可包含模板 {{params.名称}}（不能引用 sources）"
+        },
+        "cwd": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "可包含模板 {{params.名称}}（不能引用 sources）"
+        }
+      },
+      "patternProperties": {
+        "^x-": {}
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "type",
+        "run"
+      ]
+    },
+    "action_openUrl": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,40}$",
+          "description": "动作 id"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "description": "按钮文字"
+        },
+        "icon": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "图标名（见 icons）；未知名称会被忽略"
+        },
+        "type": {
+          "const": "openUrl"
+        },
+        "url": {
+          "type": "string",
+          "pattern": "^http://(127\\.0\\.0\\.1|localhost|\\[::1\\])([:/?#]|$)",
+          "description": "只能是本机地址。可包含模板 {{params.名称}}（不能引用 sources）"
+        }
+      },
+      "patternProperties": {
+        "^x-": {}
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "type",
+        "url"
+      ]
+    },
+    "action_service": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,40}$",
+          "description": "动作 id"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "description": "按钮文字"
+        },
+        "icon": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "图标名（见 icons）；未知名称会被忽略"
+        },
+        "type": {
+          "const": "service"
+        },
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+          "description": "已定义的服务名（~/.haniyax/services/<name>.json）"
+        },
+        "op": {
+          "enum": [
+            "start",
+            "stop",
+            "restart"
+          ]
+        }
+      },
+      "patternProperties": {
+        "^x-": {}
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "type",
+        "name",
+        "op"
+      ]
+    }
+  }
+}

@@ -193,4 +193,22 @@ public class OperatingSystemControlTest extends TerminalTestCase {
 		assertEnteringStringGivesResponse("\033]10;?\033\\", "\033]10;rgb:abab/cdcd/0000\033\\");
 	}
 
+
+	/** HaniyaX: OSC 4 colour queries are answered from the current palette. */
+	public void testReportIndexedColors() {
+		withTerminalSized(3, 3).enterString("\033]4;1;#ABCD00\007").assertColor(1, 0xFFABCD00);
+		assertEnteringStringGivesResponse("\033]4;1;?\007", "\033]4;1;rgb:abab/cdcd/0000\007");
+		assertEnteringStringGivesResponse("\033]4;1;?\033\\", "\033]4;1;rgb:abab/cdcd/0000\033\\");
+	}
+
+	/** HaniyaX: bracketed paste state is visible to the host. */
+	public void testBracketedPasteModeGetter() {
+		withTerminalSized(3, 3);
+		assertFalse(mTerminal.isBracketedPasteMode());
+		enterString("\033[?2004h");
+		assertTrue(mTerminal.isBracketedPasteMode());
+		enterString("\033[?2004l");
+		assertFalse(mTerminal.isBracketedPasteMode());
+	}
+
 }

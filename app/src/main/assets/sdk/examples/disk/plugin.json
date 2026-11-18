@@ -1,0 +1,57 @@
+{
+  "$schema": "/opt/haniyax/docs/plugin.schema.json",
+  "apiVersion": 1,
+  "id": "disk",
+  "name": "存储空间",
+  "version": "1.0.0",
+  "description": "工作区所在分区的用量，以及项目目录中占用最多的文件夹",
+  "icon": "db",
+  "params": {
+    "dir": {
+      "type": "path",
+      "label": "统计目录",
+      "default": "~/projects",
+      "description": "列出这个目录下占用最多的文件夹"
+    }
+  },
+  "refresh": 60,
+  "sources": {
+    "usage": {
+      "type": "command",
+      "run": "df -P \"$HOME\" | awk 'NR==2 {print $5}'",
+      "timeout": 10
+    },
+    "free": {
+      "type": "command",
+      "run": "df -Ph \"$HOME\" | awk 'NR==2 {print $4}'",
+      "timeout": 10
+    },
+    "largest": {
+      "type": "command",
+      "run": "du -sh {{params.dir}}/* 2>/dev/null | sort -rh | head -n 10",
+      "parse": "lines",
+      "timeout": 60
+    }
+  },
+  "card": {
+    "title": "存储空间",
+    "subtitle": "{{params.dir}}",
+    "blocks": [
+      { "type": "progress", "label": "已用", "value": "{{sources.usage.value}}" },
+      { "type": "metric", "label": "可用", "value": "{{sources.free.value}}" }
+    ]
+  },
+  "actions": [
+    {
+      "id": "largest",
+      "label": "占用最多",
+      "icon": "list",
+      "type": "sheet",
+      "title": "占用最多的文件夹",
+      "blocks": [
+        { "type": "log", "source": "largest", "lines": 10 }
+      ]
+    }
+  ],
+  "tap": "largest"
+}
