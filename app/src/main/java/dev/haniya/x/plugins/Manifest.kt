@@ -566,7 +566,7 @@ object ManifestParser {
 object KnownIcons {
     val names: Set<String> = setOf(
         "terminal", "folder", "bot", "server", "plug", "branch", "keyboard", "pin", "puzzle", "cpu", "diff", "paste",
-        "history", "zap", "power", "warn", "home", "timer", "chart", "spark", "user", "plus", "minus", "drop", "scale",
+        "history", "zap", "power", "warn", "whale", "home", "timer", "chart", "spark", "user", "plus", "minus", "drop", "scale",
         "run", "moon", "check", "habit", "bowl", "pulse", "note", "bell", "layout", "chevR", "chevL", "chevU", "chevD",
         "close", "eyeOff", "eye", "shrink", "expand", "refresh", "send", "arrow", "sliders", "cal", "camera", "image",
         "shield", "shieldAlert", "target", "db", "globe", "help", "info", "clock", "play", "stop", "ruler", "lock",

@@ -198,7 +198,7 @@ private fun loginCommand(t: Tool): Pair<String, String> = when (t) {
 private fun DshProviders() {
     val c = ReliefTheme.colors
     GlassCard {
-        CardHeader("DeepSeek Harness", icon = "spark", caption = "服务商在 DeepSeek Harness 的设置页中管理")
+        CardHeader("DeepSeek Harness", icon = "whale", caption = "服务商在 DeepSeek Harness 的设置页中管理")
         Spacer(Modifier.height(8.dp))
         Text(
             "DeepSeek Harness 自带完整的服务商与模型设置（设置 → 模型），并会校验配置版本。为避免两处同时改写同一份配置，HaniyaX 不直接修改它。修改后无需重启，新会话即生效。",

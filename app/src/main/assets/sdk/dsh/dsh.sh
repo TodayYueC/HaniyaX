@@ -113,6 +113,22 @@ install_dsh() {
   progress 100
 }
 
+# DSH finds its first-use workspace via `xdg-user-dir DOCUMENTS` on Linux. Point Documents at ~/projects so DSH
+# workspaces live next to the user's other projects (visible in HaniyaX's project list and file manager).
+ensure_documents_dir() {
+  step "准备工作区目录"
+  if ! command -v xdg-user-dir >/dev/null 2>&1; then
+    run "安装 xdg-user-dirs" env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends xdg-user-dirs
+  fi
+  mkdir -p "$HOME/projects" "$HOME/.config"
+  local f="$HOME/.config/user-dirs.dirs"
+  if ! grep -q '^XDG_DOCUMENTS_DIR=' "$f" 2>/dev/null; then
+    printf 'XDG_DOCUMENTS_DIR="$HOME/projects"\n' >> "$f"
+  fi
+  echo "文档目录：$(xdg-user-dir DOCUMENTS)"
+  progress 100
+}
+
 install_plugin() {
   step "安装移动前端插件"
   if [ ! -f "$PLUGIN_TGZ" ]; then
@@ -140,13 +156,15 @@ versions() {
 cmd="${1:-install}"; shift || true
 case "$cmd" in
   install)
-    ensure_tools; ensure_node; install_dsh "${1:-latest}"; install_plugin
+    ensure_tools; ensure_node; install_dsh "${1:-latest}"; ensure_documents_dir; install_plugin
     result "DeepSeek Harness $(dsh_version)" ;;
   update)
-    ensure_tools; ensure_node; install_dsh "${1:-latest}"
+    ensure_tools; ensure_node; install_dsh "${1:-latest}"; ensure_documents_dir
     result "DeepSeek Harness $(dsh_version)" ;;
   plugin)
     install_plugin; result "ok" ;;
+  documents)
+    ensure_documents_dir ;;
   versions)
     versions ;;
   *) echo "用法：dsh.sh install|update [版本]|plugin|versions" >&2; exit 2 ;;

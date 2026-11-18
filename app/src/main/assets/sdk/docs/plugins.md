@@ -96,7 +96,7 @@
 
 ## 可用图标
 
-terminal folder bot server plug branch keyboard pin puzzle cpu diff paste history zap power warn home timer chart
+terminal folder bot server plug branch keyboard pin puzzle cpu diff paste history zap power warn whale home timer chart
 spark user plus minus drop scale run moon check habit bowl pulse note bell layout chevR chevL chevU chevD close
 eyeOff eye shrink expand refresh send arrow sliders cal camera image shield shieldAlert target db globe help info
 clock play stop ruler lock list link qr search trash edit copy download upload drag pause flame heart logout key palette

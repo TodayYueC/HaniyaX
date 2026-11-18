@@ -104,7 +104,7 @@ private fun InstallPage(job: JobSnapshot?) {
     Page("DeepSeek Harness", caption = "DeepSeek 的开源智能体工作台") {
         GlassCard {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                IconTile("spark", size = 44.dp)
+                IconTile("whale", size = 44.dp)
                 Column(Modifier.weight(1f)) {
                     Text("在手机上使用 DeepSeek Harness", style = ReliefTheme.type.h3)
                     Text("会话、工具调用、审批与文件变更都在 HaniyaX 内完成，无需浏览器。", style = ReliefTheme.type.caption, color = c.ink2)
@@ -166,7 +166,7 @@ private fun LogTail(lines: List<String>) {
 private fun LoadingCard(text: String, log: List<String>) {
     GlassCard {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            IconTile("spark", size = 40.dp)
+            IconTile("whale", size = 40.dp)
             Text(text, style = ReliefTheme.type.h3, modifier = Modifier.weight(1f))
         }
         Spacer(Modifier.height(12.dp))
@@ -320,7 +320,7 @@ private fun DshMenuSheet(visible: Boolean, versions: DshVersions, onDismiss: () 
     GlassSheet(visible = visible, onDismiss = onDismiss, title = "DeepSeek Harness") {
         Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 16.dp)) {
             Text("版本", style = ReliefTheme.type.label, color = c.ink2)
-            ListRow("DeepSeek Harness", icon = "spark", value = versions.dsh.ifBlank { "未安装" }, subtitle = when {
+            ListRow("DeepSeek Harness", icon = "whale", value = versions.dsh.ifBlank { "未安装" }, subtitle = when {
                 versions.updateAvailable -> "有新版本 ${versions.latest}"
                 versions.latest.isNotBlank() -> "已是最新"
                 else -> "暂时无法检查更新"

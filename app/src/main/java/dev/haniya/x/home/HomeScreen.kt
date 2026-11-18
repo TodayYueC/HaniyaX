@@ -242,7 +242,7 @@ private fun EntryTiles(shells: Int, installedAgents: Int, agentBusy: Boolean, ds
             Modifier.weight(1f).fillMaxHeight(),
         ) { Nav.go(Route.Agents) }
         EntryTile(
-            "zap", "DeepSeek Harness", if (dshOnline) "服务在线" else "内嵌工作页",
+            "whale", "DeepSeek Harness", if (dshOnline) "服务在线" else "内嵌工作页",
             Modifier.weight(1f).fillMaxHeight(), translateLabel = false,
         ) { Nav.go(Route.Dsh) }
     }
