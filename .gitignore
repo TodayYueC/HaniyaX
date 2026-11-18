@@ -8,3 +8,4 @@ app/src/main/assets/runtime/
 /out/
 node_modules/
 dsh-mobile/dist/
+app/src/debug/assets/runtime/

@@ -30,7 +30,10 @@ android {
         }
     }
     buildTypes {
-        debug { applicationIdSuffix = "" }
+        debug {
+            // Debug builds also run on x86_64 emulators (native x86_64 proot + amd64 rootfs in src/debug/assets).
+            ndk { abiFilters += listOf("x86_64") }
+        }
         release {
             isMinifyEnabled = false
             signingConfig = signingConfigs.getByName(if (rootProject.file("keystore/haniyax-release.jks").exists()) "release" else "debug")

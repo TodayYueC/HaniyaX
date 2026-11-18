@@ -81,7 +81,7 @@ object WorkspaceSteps {
     }
 }
 
-/** Parses `apt-get -o APT::Status-Fd=1` lines into an overall progress (0..1) across update + install. */
+/** Parses `apt-get -o APT::Status-Fd=3 3>&1` lines (fd 1 must not be used: it breaks debconf maintainer scripts) into an overall progress (0..1) across update + install. */
 class AptProgress {
     enum class Phase { Update, Install }
 
@@ -307,6 +307,9 @@ class WorkspaceImpl(private val context: Context) : WorkspaceApi {
                 saveRecord(record)
                 _progress.value = InstallProgressView(InstallStep.entries.filter(record::isDone).toSet(), null, null)
                 log("HaniyaX 工作区：待执行 ${pending.joinToString(" → ") { it.label }}")
+                // An APK update may ship new runtime binaries even when the runtime step itself is already done
+                // (e.g. retrying after a failed later step): refresh them by APK stamp before running guest steps.
+                if (InstallStep.Runtime !in pending) installRuntime(force = false)
                 for (s in pending) {
                     ensureActive()
                     step = s
@@ -471,7 +474,7 @@ class WorkspaceImpl(private val context: Context) : WorkspaceApi {
         val runtime = Paths.runtime
         val partial = File(Paths.files, "runtime.partial")
         RootfsExtractor.deleteTree(partial)
-        RootfsExtractor.extractAsset(context, ASSET_PROOT, partial, onProgress = { p -> setProgress(p) }, onLog = ::log)
+        RootfsExtractor.extractAsset(context, "runtime/proot-${runtimeArch(context)}.tar.xz", partial, onProgress = { p -> setProgress(p) }, onLog = ::log)
         runtime.mkdirs()
         moveTreeInto(partial, runtime)
         RootfsExtractor.deleteTree(partial)
@@ -507,7 +510,7 @@ class WorkspaceImpl(private val context: Context) : WorkspaceApi {
         val partial = File(Paths.files, "rootfs.partial")
         RootfsExtractor.deleteTree(partial)
         val stats = RootfsExtractor.extractAsset(
-            context, ASSET_ROOTFS, partial,
+            context, "runtime/debian-${runtimeArch(context)}.tar.xz", partial,
             onProgress = { p -> setProgress(p) },
             onLog = ::log,
         )
@@ -583,10 +586,10 @@ class WorkspaceImpl(private val context: Context) : WorkspaceApi {
             export DEBIAN_FRONTEND=noninteractive
             dpkg --configure -a >/dev/null 2>&1 || true
             echo "::hx-phase:: update"
-            apt-get --error-on=any -o APT::Status-Fd=1 update
+            apt-get --error-on=any -o APT::Status-Fd=3 update 3>&1
             echo "::hx-phase:: install"
-            apt-get -o APT::Status-Fd=1 -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold \
-              install -y --no-install-recommends $BASE_PACKAGES
+            apt-get -o APT::Status-Fd=3 -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold \
+              install -y --no-install-recommends $BASE_PACKAGES 3>&1
             echo "基础软件安装完成"
         """.trimIndent()
         val apt = AptProgress()
@@ -713,8 +716,15 @@ class WorkspaceImpl(private val context: Context) : WorkspaceApi {
         private const val TAG = "HaniyaX.Workspace"
         private const val LOG_KEEP = 400
         private const val MAX_CAPTURE = 8 * 1024 * 1024
-        const val ASSET_PROOT = "runtime/proot-aarch64.tar.xz"
-        const val ASSET_ROOTFS = "runtime/debian-aarch64.tar.xz"
+        /**
+         * Runtime architecture: release APKs ship aarch64 only; debug builds also carry x86_64 assets so the
+         * full workspace can run natively on x86_64 emulators (proot cannot run under ARM translation).
+         */
+        fun runtimeArch(context: android.content.Context): String {
+            val primary = android.os.Build.SUPPORTED_ABIS.firstOrNull()
+            val hasX86 = runCatching { context.assets.list("runtime")?.contains("proot-x86_64.tar.xz") == true }.getOrDefault(false)
+            return if (primary == "x86_64" && hasX86) "x86_64" else "aarch64"
+        }
 
         const val BASE_PACKAGES =
             "ca-certificates curl wget git unzip xz-utils procps less nano openssh-client ripgrep jq file psmisc"
