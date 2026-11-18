@@ -14,7 +14,7 @@
 
 ID=codex
 REPO="https://github.com/openai/codex"
-TARGET="aarch64-unknown-linux-musl"
+TARGET="${HX_ARCH:-aarch64}-unknown-linux-musl"
 ASSET="codex-package-$TARGET.tar.gz"
 SUMS="codex-package_SHA256SUMS"
 ROOT="$HOME/.local/share/haniyax/agents/codex"

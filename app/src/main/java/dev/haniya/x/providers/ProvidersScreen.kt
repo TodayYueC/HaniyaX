@@ -233,7 +233,7 @@ private fun ProviderEditSheet(
         var confirmDelete by remember(p0) { mutableStateOf(false) }
         val isNew = p0.id.isBlank()
 
-        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 16.dp).verticalScroll(rememberScrollState())) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 16.dp)) {
             Text(if (isNew) "添加服务商 · ${t.label}" else "编辑服务商", style = ReliefTheme.type.title)
             if (isNew) {
                 FieldLabel("从预设开始")

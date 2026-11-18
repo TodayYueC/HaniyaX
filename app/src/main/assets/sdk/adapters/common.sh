@@ -69,12 +69,15 @@ run_logged() {
   return "${PIPESTATUS[0]}"
 }
 
+# Workspace architecture: aarch64 on phones; x86_64 on x86 devices/emulators. Every agent ships both.
+case "$(uname -m)" in
+  aarch64|arm64) HX_ARCH=aarch64; HX_NPM_ARCH=arm64 ;;
+  x86_64|amd64)  HX_ARCH=x86_64;  HX_NPM_ARCH=x64 ;;
+  *)             HX_ARCH="";      HX_NPM_ARCH="" ;;
+esac
+
 need_arch() {
-  local m; m="$(uname -m)"
-  case "$m" in
-    aarch64|arm64) ;;
-    *) fail "架构不支持：检测到 $m，此智能体在 HaniyaX 中仅支持 arm64（aarch64）。" ;;
-  esac
+  [ -n "$HX_ARCH" ] || fail "架构不支持：检测到 $(uname -m)，智能体只提供 arm64 与 x86_64 版本。"
 }
 
 # need_disk <MB>: free space in $HOME.

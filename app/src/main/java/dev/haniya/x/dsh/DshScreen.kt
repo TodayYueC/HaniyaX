@@ -72,14 +72,15 @@ import kotlinx.coroutines.delay
 fun DshScreen() {
     val state by DshManager.state.collectAsState()
     val jobs by Runtime.jobs.jobs.collectAsState()
-    val job = jobs.firstOrNull { it.title.contains("DeepSeek") || it.title.contains("移动前端") }
-        ?.takeIf { Runtime.jobs.runningForKey(DshManager.JOB_KEY)?.id == it.id || it.state != JobState.Succeeded }
+    // Newest DSH job (unfiltered) drives the refresh; the card only shows running or unsuccessful jobs.
+    val latestJob = jobs.firstOrNull { it.title.contains("DeepSeek") || it.title.contains("移动前端") }
+    val job = latestJob?.takeIf { it.state != JobState.Succeeded }
     var lastJobState by remember { mutableStateOf<JobState?>(null) }
 
     LaunchedEffect(Unit) { DshManager.refresh() }
-    LaunchedEffect(job?.state) {
-        if (lastJobState == JobState.Running && job?.state == JobState.Succeeded) DshManager.refresh()
-        lastJobState = job?.state
+    LaunchedEffect(latestJob?.id, latestJob?.state) {
+        if (lastJobState == JobState.Running && latestJob?.state == JobState.Succeeded) DshManager.refresh()
+        lastJobState = latestJob?.state
     }
 
     when (val s = state) {
@@ -317,7 +318,7 @@ private fun WorkPage(versions: DshVersions) {
 private fun DshMenuSheet(visible: Boolean, versions: DshVersions, onDismiss: () -> Unit, onSandbox: () -> Unit) {
     val c = ReliefTheme.colors
     GlassSheet(visible = visible, onDismiss = onDismiss, title = "DeepSeek Harness") {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 16.dp).verticalScroll(rememberScrollState())) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 16.dp)) {
             Text("版本", style = ReliefTheme.type.label, color = c.ink2)
             ListRow("DeepSeek Harness", icon = "spark", value = versions.dsh.ifBlank { "未安装" }, subtitle = when {
                 versions.updateAvailable -> "有新版本 ${versions.latest}"

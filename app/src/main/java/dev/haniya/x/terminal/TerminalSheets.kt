@@ -57,7 +57,7 @@ internal fun NewTabSheet(visible: Boolean, onDismiss: () -> Unit) {
     }
 
     GlassSheet(visible = visible, onDismiss = onDismiss, title = "新建标签") {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 16.dp).verticalScroll(rememberScrollState())) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 16.dp)) {
             Text("新建标签", style = ReliefTheme.type.title)
             Text("同一个项目可以并行开多个标签。", style = ReliefTheme.type.caption, color = c.ink2)
             ListRow("启动智能体", icon = "bot", subtitle = "Claude Code · Codex · OpenCode", onClick = {
@@ -92,7 +92,7 @@ internal fun ExtraKeysEditorSheet(visible: Boolean, onDismiss: () -> Unit) {
     }
 
     GlassSheet(visible = visible, onDismiss = onDismiss, title = "自定义扩展键") {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("自定义扩展键", style = ReliefTheme.type.title)
             Text("点选一个键后可移动或删除；从下方添加新键。", style = ReliefTheme.type.caption, color = c.ink2)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
