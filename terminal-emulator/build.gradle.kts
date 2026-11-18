@@ -1,7 +1,7 @@
 plugins { id("com.android.library") }
 android {
     namespace = "com.termux.emulator"
-    compileSdk = 36
+    compileSdk { version = release(37) { minorApiLevel = 2 } }
     ndkVersion = "28.2.13676358"
     defaultConfig {
         minSdk = 26

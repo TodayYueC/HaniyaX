@@ -10,7 +10,7 @@ import java.io.FileNotFoundException
 import java.io.IOException
 
 /**
- * Copies the APK's `assets/sdk/**` tree (hx CLI, docs, adapters, DSH plugin…) into the guest at
+ * Copies the APK's `assets/sdk` tree (hx CLI, docs, adapters, DSH plugin…) into the guest at
  * /opt/haniyax, replacing the previous copy, and stamps /opt/haniyax/VERSION with the APK identity so an
  * APK update refreshes it on the next start.
  */

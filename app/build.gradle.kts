@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "dev.haniya.x"
-    compileSdk = 36
+    compileSdk { version = release(37) { minorApiLevel = 2 } }
     defaultConfig {
         applicationId = "dev.haniya.x"
         minSdk = 26
@@ -39,7 +39,10 @@ android {
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     buildFeatures { compose = true; buildConfig = true }
     androidResources { noCompress += listOf("xz") }
-    packaging { resources.excludes += listOf("META-INF/*.md", "META-INF/LICENSE*", "META-INF/NOTICE*") }
+    packaging {
+        resources.excludes += listOf("META-INF/*.md", "META-INF/LICENSE*", "META-INF/NOTICE*")
+        jniLibs.useLegacyPackaging = true
+    }
     lint { checkReleaseBuilds = false; abortOnError = false }
 }
 

@@ -37,6 +37,9 @@ object Sessions {
 
     const val CLAUDE_NAME_LIMIT = 200
 
+    /** "/root/x/" and "/root/x" are the same project; "/" stays "/". */
+    fun normalizeCwd(cwd: String): String = cwd.trimEnd('/').ifEmpty { "/" }
+
     /** Candidate project directories for [cwd] under [projectsDir] (exact name, or truncated name + hash suffix). */
     fun claudeProjectDirs(projectsDir: File, cwd: String): List<File> {
         val name = claudeProjectDirName(cwd)
@@ -92,7 +95,8 @@ object Sessions {
             text.startsWith("<system-reminder>") || text.startsWith("[Request interrupted")
 
     /** Sessions for [cwd]: newest first, only transcripts that hold at least one real prompt. */
-    fun claudeSessions(home: File, cwd: String, limit: Int = MAX_SESSIONS): List<AgentSession> {
+    fun claudeSessions(home: File, cwd0: String, limit: Int = MAX_SESSIONS): List<AgentSession> {
+        val cwd = normalizeCwd(cwd0)
         val projects = File(home, ".claude/projects")
         val files = claudeProjectDirs(projects, cwd)
             .flatMap { d -> d.listFiles { f -> f.isFile && f.name.endsWith(".jsonl") && f.length() > 0 }?.toList().orEmpty() }

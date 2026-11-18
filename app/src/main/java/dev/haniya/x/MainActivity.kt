@@ -24,7 +24,9 @@ import dev.haniya.relief.component.AppBackground
 import dev.haniya.relief.component.LocalToast
 import dev.haniya.relief.component.ToastHost
 import dev.haniya.relief.component.ToastState
-import dev.haniya.relief.theme.Motion
+import androidx.compose.animation.core.snap
+import dev.haniya.relief.theme.LocalReducedMotion
+import dev.haniya.relief.theme.ReliefMotion
 import dev.haniya.relief.theme.ReliefTheme
 import dev.haniya.x.agents.AgentsScreen
 import dev.haniya.x.dsh.DshScreen
@@ -91,9 +93,13 @@ private fun Root() {
     }
     StartRouter.ApplyOnce()
     BackHandler(enabled = Nav.stack.size > 1) { Nav.back() }
+    val reduced = LocalReducedMotion.current
     AnimatedContent(
         targetState = Nav.current,
-        transitionSpec = { fadeIn(Motion.soft()) togetherWith fadeOut(Motion.soft()) },
+        transitionSpec = {
+            if (reduced) fadeIn(snap()) togetherWith fadeOut(snap())
+            else fadeIn(ReliefMotion.soft()) togetherWith fadeOut(ReliefMotion.soft())
+        },
         label = "route",
     ) { route ->
         Box(Modifier.fillMaxSize()) {
