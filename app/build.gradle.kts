@@ -1,8 +1,17 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
 }
+
+// Release signing: keystore/haniyax-release.jks + keystore/keystore.properties (both git-ignored).
+val ksProps: Properties = Properties().also { p ->
+    val f = rootProject.file("keystore/keystore.properties")
+    if (f.exists()) f.inputStream().use { p.load(it) }
+}
+val hasReleaseKey: Boolean = rootProject.file("keystore/haniyax-release.jks").exists() && ksProps.getProperty("storePassword") != null
 
 android {
     namespace = "dev.haniya.x"
@@ -19,14 +28,11 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     signingConfigs {
-        create("release") {
-            val ks = rootProject.file("keystore/haniyax-release.jks")
-            if (ks.exists()) {
-                storeFile = ks
-                storePassword = System.getenv("HANIYAX_KS_PASS") ?: "haniyax"
-                keyAlias = "haniyax"
-                keyPassword = System.getenv("HANIYAX_KS_PASS") ?: "haniyax"
-            }
+        if (hasReleaseKey) create("release") {
+            storeFile = rootProject.file("keystore/haniyax-release.jks")
+            storePassword = ksProps.getProperty("storePassword")
+            keyAlias = ksProps.getProperty("keyAlias", "haniyax")
+            keyPassword = ksProps.getProperty("keyPassword")
         }
     }
     buildTypes {
@@ -36,7 +42,7 @@ android {
         }
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName(if (rootProject.file("keystore/haniyax-release.jks").exists()) "release" else "debug")
+            signingConfig = signingConfigs.getByName(if (hasReleaseKey) "release" else "debug")
         }
     }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
