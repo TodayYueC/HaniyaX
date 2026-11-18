@@ -167,7 +167,7 @@ object ExtraKeys {
 
     val DEFAULT_IDS: List<List<String>> = listOf(
         listOf("esc", "tab", "ctrl", "alt", "up", "down", "left", "right", "home", "end"),
-        listOf("-", "|", "~", "pgup", "pgdn", "paste", "compose", "search", "fullscreen", "keyboard"),
+        listOf("-", "|", "enter", "pgup", "pgdn", "paste", "compose", "search", "fullscreen", "keyboard"),
     )
 
     val DEFAULT: ExtraKeysLayout = ExtraKeysLayout(DEFAULT_IDS.map { row -> row.map { byId.getValue(it) } })
