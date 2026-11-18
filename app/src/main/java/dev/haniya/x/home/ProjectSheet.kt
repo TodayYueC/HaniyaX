@@ -99,6 +99,11 @@ fun ProjectSheet(
             val err = HomeActions.openShell(p.path)
             if (err != null) toast.show(err, icon = "warn") else onDismiss()
         }, subtitle = "新的 Shell 标签，工作目录为此项目")
+        Divider()
+        ActionRow("folder", "在文件中查看", onClick = {
+            onDismiss()
+            Nav.go(Route.Files(p.path))
+        }, subtitle = "浏览、导入或分享项目里的文件")
 
         val running = tasks.filter { it.status == TaskStatus.Running && TaskList.inProject(it, p.path) }
         running.forEach { t ->
@@ -272,6 +277,13 @@ fun NewProjectSheet(visible: Boolean, onDismiss: () -> Unit, onCreated: (String)
                     if (trimmedUrl.isEmpty()) "创建" else "克隆并创建", { submit() },
                     Modifier.fillMaxWidth(), enabled = canCreate,
                 )
+                Spacer(Modifier.height(12.dp))
+                GlassButton("选择已有文件夹", {
+                    focus.clearFocus()
+                    onDismiss()
+                    Nav.go(Route.Files(Paths.GUEST_PROJECTS, pickProject = true))
+                }, Modifier.fillMaxWidth(), icon = "folder")
+                Hint("可以选择工作区或手机存储中的文件夹作为项目", warn = false)
             }
         }
     }

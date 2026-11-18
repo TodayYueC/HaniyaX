@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Workspace files (guest /root lives at files/rootfs/root). -->
+    <files-path name="workspace" path="rootfs/" />
+    <!-- Phone storage, when the user granted access. -->
+    <external-path name="phone" path="." />
+</paths>

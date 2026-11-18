@@ -14,6 +14,8 @@ sealed interface Route {
     data object Settings : Route
     /** Plugin card details / permissions / editor for plugin [pluginId]. */
     data class Plugin(val pluginId: String) : Route
+    /** File manager starting at guest [path]; [pickProject] = choose a folder to add as a project. */
+    data class Files(val path: String? = null, val pickProject: Boolean = false) : Route
     /** Service detail: status, address, logs, start/stop. */
     data class Service(val name: String) : Route
 }

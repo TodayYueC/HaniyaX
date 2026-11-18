@@ -258,6 +258,9 @@ class WorkspaceImpl(private val context: Context) : WorkspaceApi {
     private val runtimeLock = Any()
     @Volatile private var probedBinds: List<Bind>? = null
 
+    /** Re-probe /storage and /sdcard binds for processes started from now on (after a storage permission change). */
+    fun refreshStorageBinds() { probedBinds = null }
+
     // Install log ring + throttled state publishing.
     private val logRing = ArrayDeque<String>()
     private var logWriter: BufferedWriter? = null

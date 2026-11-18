@@ -277,7 +277,13 @@ public final class TerminalRenderer {
 
         mes = mes / mFontWidth;
         boolean savedMatrix = false;
-        if (Math.abs(mes - runWidthColumns) > 0.01) {
+        // HaniyaX: glyphs narrower than their cells (CJK in a Latin monospace font: ~1em glyph in 2 cells ≈ 1.2em)
+        // are centred instead of stretched — upstream scaled them horizontally, which made Chinese look bloated.
+        // Mismatched code points are always rendered as single-character runs, so centring keeps the grid intact.
+        float textOffset = 0f;
+        if (mes < runWidthColumns - 0.01) {
+            textOffset = (runWidthColumns - mes) * mFontWidth / 2f;
+        } else if (Math.abs(mes - runWidthColumns) > 0.01) {
             canvas.save();
             canvas.scale(runWidthColumns / mes, 1.f);
             left *= mes / runWidthColumns;
@@ -314,9 +320,9 @@ public final class TerminalRenderer {
 
             // The text alignment is the default Paint.Align.LEFT.
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                canvas.drawTextRun(text, startCharIndex, runWidthChars, startCharIndex, runWidthChars, left, y - mFontLineSpacingAndAscent, false, mTextPaint);
+                canvas.drawTextRun(text, startCharIndex, runWidthChars, startCharIndex, runWidthChars, left + textOffset, y - mFontLineSpacingAndAscent, false, mTextPaint);
             } else {
-                canvas.drawText(text, startCharIndex, runWidthChars, left, y - mFontLineSpacingAndAscent, mTextPaint);
+                canvas.drawText(text, startCharIndex, runWidthChars, left + textOffset, y - mFontLineSpacingAndAscent, mTextPaint);
             }
         }
 

@@ -129,7 +129,7 @@ private fun IntroCard() {
         CardHeader("一套 Linux 环境", icon = "terminal", caption = "终端、Agent、项目与后台服务共用一套 Linux 环境")
         Spacer(Modifier.height(14.dp))
         Text(
-            "HaniyaX 会在应用内准备一个 Debian 系统，不需要 Root，也不会影响已安装的 Termux。",
+            "HaniyaX 会在应用内准备一个完整的 Debian 系统，开箱即用。",
             style = ReliefTheme.type.body, color = c.ink,
         )
         Spacer(Modifier.height(12.dp))

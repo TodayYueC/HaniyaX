@@ -7,3 +7,4 @@
 | relief/src/main/res/font/inter_variable.ttf | https://github.com/google/fonts (ofl/inter) | main | SIL OFL 1.1 |
 | assets: proot, libtalloc, libandroid-shmem | https://packages.termux.dev (termux/proot) | proot 5.1.107.102, talloc 2.5.0, shmem 0.7 | GPL-2.0 / LGPL-3.0 / BSD — source: https://github.com/termux/proot, https://talloc.samba.org |
 | assets: debian rootfs | docker.io/library/debian:trixie-slim (arm64) | 2026-11-04 | Debian (various free licenses) |
+- terminal-view TerminalRenderer: glyphs narrower than their cells (CJK) are centred, not stretched horizontally.

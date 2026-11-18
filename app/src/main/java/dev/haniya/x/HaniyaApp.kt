@@ -39,5 +39,6 @@ class HaniyaApp : Application() {
         App.agents = AgentManager()
         App.plugins = PluginHost()
         ControlServer.start()
+        runCatching { dev.haniya.x.files.PhoneStorage.refresh(this) }
     }
 }

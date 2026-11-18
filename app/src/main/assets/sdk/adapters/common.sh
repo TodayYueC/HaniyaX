@@ -104,13 +104,23 @@ semver_ok() { printf '%s' "$1" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-
 download() {
   local url="$1" out="$2" total size pid code
   total="$(curl -fsSLI -m 30 "$url" 2>/dev/null | tr -d '\r' | awk 'tolower($1)=="content-length:" {v=$2} END {print v+0}')"
+  if [ "${total:-0}" -le 1 ]; then
+    # Signed redirect targets (GitHub release assets) often refuse HEAD: read the size from a 1-byte range request.
+    total="$(curl -fsSL -m 30 -r 0-0 -o /dev/null -D - "$url" 2>/dev/null | tr -d '\r' \
+      | awk 'tolower($1)=="content-range:" {n=split($3,a,"/"); v=a[n]} END {print v+0}')"
+  fi
   curl -fSL --retry 2 --connect-timeout 20 -o "$out" "$url" >>"$HX_LOG" 2>&1 &
   pid=$!
+  local tick=0
   while kill -0 "$pid" 2>/dev/null; do
-    if [ "${total:-0}" -gt 0 ] && [ -f "$out" ]; then
-      size="$(stat -c %s "$out" 2>/dev/null || echo 0)"
+    size="$(stat -c %s "$out" 2>/dev/null || echo 0)"
+    if [ "${total:-0}" -gt 1 ]; then
       progress "$(( size * 100 / total ))"
+      [ $((tick % 5)) -eq 0 ] && log "已下载 $(( size / 1048576 )) / $(( total / 1048576 )) MB"
+    elif [ $((tick % 5)) -eq 0 ]; then
+      log "已下载 $(( size / 1048576 )) MB"
     fi
+    tick=$((tick + 1))
     sleep 1
   done
   wait "$pid"; code=$?

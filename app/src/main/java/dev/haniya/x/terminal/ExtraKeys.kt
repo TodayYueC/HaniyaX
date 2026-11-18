@@ -161,14 +161,19 @@ private fun ExtraKeyButton(key: ExtraKey, visual: KeyVisual, width: Dp, onKey: (
             HIcon(icon, size = 18.dp, tint = fg)
         } else {
             val symbol = key.action is KeyAction.Symbol
-            Text(
+            // Labels shrink to fit narrow keys (large system font scale, many keys per row) instead of clipping.
+            androidx.compose.foundation.text.BasicText(
                 key.label,
-                style = if (symbol) ReliefTheme.type.body.copy(fontFamily = FontFamily.Monospace, fontSize = 15.sp)
-                else ReliefTheme.type.badge.copy(fontSize = if (width < 36.dp) 11.sp else 12.sp),
-                color = fg,
+                modifier = Modifier.padding(horizontal = 3.dp),
+                style = (if (symbol) ReliefTheme.type.body.copy(fontFamily = FontFamily.Monospace)
+                else ReliefTheme.type.badge).copy(color = fg),
                 maxLines = 1,
-                overflow = TextOverflow.Clip,
-                translate = false,
+                softWrap = false,
+                autoSize = androidx.compose.foundation.text.TextAutoSize.StepBased(
+                    minFontSize = 8.sp,
+                    maxFontSize = if (symbol) 15.sp else 12.sp,
+                    stepSize = 0.5.sp,
+                ),
             )
         }
         if (visual == KeyVisual.Locked) {

@@ -30,6 +30,7 @@ import dev.haniya.relief.theme.ReliefMotion
 import dev.haniya.relief.theme.ReliefTheme
 import dev.haniya.x.agents.AgentsScreen
 import dev.haniya.x.dsh.DshScreen
+import dev.haniya.x.files.FilesScreen
 import dev.haniya.x.home.HomeScreen
 import dev.haniya.x.home.StartRouter
 import dev.haniya.x.plugins.PluginScreen
@@ -112,6 +113,7 @@ private fun Root() {
                 Route.Settings -> SettingsScreen()
                 is Route.Plugin -> PluginScreen(route.pluginId)
                 is Route.Service -> ServiceScreen(route.name)
+                is Route.Files -> FilesScreen(route.path, route.pickProject)
             }
         }
     }

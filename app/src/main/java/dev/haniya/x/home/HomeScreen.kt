@@ -217,6 +217,7 @@ private fun HomeHeader(runningTasks: Int, onlineServices: Int, editing: Boolean,
         }
         if (editing) GlassButton("完成", onToggleEdit, size = ButtonSize.Small, icon = "check")
         else GlassButton("编辑", onToggleEdit, size = ButtonSize.Small, icon = "edit")
+        IconCircleButton("folder", "文件", { Nav.go(Route.Files()) })
         IconCircleButton("sliders", "设置", { Nav.go(Route.Settings) })
     }
 }
