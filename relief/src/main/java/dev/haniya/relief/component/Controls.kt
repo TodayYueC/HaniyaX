@@ -155,7 +155,7 @@ fun CheckCircle(checked: Boolean, onClick: (() -> Unit)?, modifier: Modifier = M
             .then(if (checked) Modifier.gradientSurface(CircleShape, glow = 6.dp) else Modifier.insetSurface(CircleShape, depth = 2.5.dp))
             .then(if (onClick != null) Modifier.pressable(onClick = onClick, role = Role.Checkbox, pressedScale = 0.99f) else Modifier)
             .semantics {
-                contentDescription = label
+                contentDescription = dev.haniya.relief.i18n.I18n.tr(label)
                 stateDescription = if (checked) "已完成" else "未完成"
             },
         contentAlignment = Alignment.Center,
@@ -222,7 +222,7 @@ private fun StepButton(icon: String, desc: String, onClick: () -> Unit, enabled:
             .size(size)
             .glass(CircleShape, GlassLevel.Thin, shadow = enabled)
             .pressable(enabled = enabled, onClick = onClick, pressedScale = 0.99f)
-            .semantics { contentDescription = desc },
+            .semantics { contentDescription = dev.haniya.relief.i18n.I18n.tr(desc) },
         contentAlignment = Alignment.Center,
     ) { if (enabled) HIcon(icon, size = 20.dp, brush = c.brush) else HIcon(icon, size = 20.dp, tint = c.ink2.copy(alpha = 0.4f)) }
 }

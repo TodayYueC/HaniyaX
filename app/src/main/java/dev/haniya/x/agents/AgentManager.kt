@@ -135,6 +135,7 @@ class AgentManager : AgentsApi {
             else -> resume.trim().also { require(AgentAdapter.isValidSessionId(it)) { "会话编号无效：$it" } }
         }
         val cwd = Sessions.normalizeDir(projectPath)
+        AgentThemes.ensureFor(a.id)
         val full = a.supportsFullAccess && fullAccess.value[a.id] == true
         val command = a.command(r, full)
         // After the process is gone, reopen this exact conversation, or the most recent one in this folder.

@@ -104,7 +104,7 @@ private fun ErrorCard(lp: LoadedPlugin, modifier: Modifier) {
         }
         Column(Modifier.padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             lp.errors.take(3).forEach {
-                Text("· $it", style = ReliefTheme.type.caption, color = c.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis, translate = false)
+                Text("· $it", style = ReliefTheme.type.caption, color = c.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             if (lp.errors.size > 3) Text("另有 ${lp.errors.size - 3} 处问题", style = ReliefTheme.type.caption, color = c.ink2)
         }
@@ -218,7 +218,7 @@ private fun CardNotice(lp: LoadedPlugin) {
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         HIcon(if (lp.approval == ApprovalState.Pending || lp.approval == ApprovalState.Changed) "shield" else "info", size = 16.dp, tint = c.ink2)
-        Text(text, style = ReliefTheme.type.caption, color = c.ink2, modifier = Modifier.weight(1f), maxLines = 2, overflow = TextOverflow.Ellipsis, translate = false)
+        Text(text, style = ReliefTheme.type.caption, color = c.ink2, modifier = Modifier.weight(1f), maxLines = 2, overflow = TextOverflow.Ellipsis)
         TextLink(button, onClick = { Nav.go(Route.Plugin(lp.id)) })
     }
 }

@@ -4,7 +4,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 /** CONTRACT — owned by the agents module. */
 data class AgentInfo(
-    /** "claude", "codex", "opencode". */
+    /** "claude", "codex", "antigravity", "opencode". */
     val id: String,
     val name: String,
     val vendor: String,

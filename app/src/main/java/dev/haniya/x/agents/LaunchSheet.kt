@@ -197,7 +197,7 @@ private fun AgentStep(status: Map<String, AgentStatus>, onPick: (String) -> Unit
             IconTile(a.icon.ifBlank { "bot" }, size = 38.dp, filled = false)
             Column(Modifier.weight(1f)) {
                 Text(a.name, style = ReliefTheme.type.bodyMedium, color = if (installed) c.ink else c.ink2, translate = false)
-                Text(AgentUiLogic.statusLine(s), style = ReliefTheme.type.caption, color = c.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis, translate = false)
+                Text(AgentUiLogic.statusLine(s), style = ReliefTheme.type.caption, color = c.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             when {
                 installed -> HIcon("chevR", size = 18.dp, tint = c.ink2.copy(alpha = 0.7f))
@@ -390,8 +390,8 @@ private fun ChoiceRow(selected: Boolean, title: String, subtitle: String?, onCli
     ) {
         CheckCircle(checked = selected, onClick = null, size = 22.dp, label = title)
         Column(Modifier.weight(1f)) {
-            Text(title, style = ReliefTheme.type.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis, translate = false)
-            if (subtitle != null) Text(subtitle, style = ReliefTheme.type.caption, color = c.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis, translate = false)
+            Text(title, style = ReliefTheme.type.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            if (subtitle != null) Text(subtitle, style = ReliefTheme.type.caption, color = c.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }

@@ -1,0 +1,20 @@
+HaniyaX
+Copyright 2026 TodayYueC
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This product includes software developed by others:
+
+- Termux terminal-emulator and terminal-view modules (Apache-2.0)
+  https://github.com/termux/termux-app — local modifications listed in UPSTREAM.md
+- Haniya Relief UI design system
+  https://github.com/TodayYueC/haniya-relief-ui
+- Provider presets and the key-field configuration model ported from CC Switch (MIT)
+  https://github.com/farion1231/cc-switch
+- Inter, JetBrains Mono and Noto Sans Symbols 2 fonts (SIL Open Font License 1.1)
+
+Bundled at build time (not part of this repository, fetched by tools/fetch-assets.sh):
+
+- proot (Termux fork, GPL-2.0), libtalloc (LGPL-3.0), libandroid-shmem (BSD)
+  Source: https://github.com/termux/proot, https://talloc.samba.org
+- Debian trixie root filesystem; each package keeps its own free software license.

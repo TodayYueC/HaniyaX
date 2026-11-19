@@ -87,7 +87,7 @@ fun PluginScreen(pluginId: String) {
                 val c = ReliefTheme.colors
                 Text(
                     "将删除卡片目录 ~/.haniyax/plugins/$pluginId（包括本机参数）以及它的命令确认记录。此操作无法撤销。",
-                    style = ReliefTheme.type.body, color = c.ink, translate = false,
+                    style = ReliefTheme.type.body, color = c.ink,
                 )
                 Row(Modifier.fillMaxWidth().padding(top = 18.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     GlassButton("取消", onClick = { confirmRemove = false }, modifier = Modifier.weight(1f), enabled = !removing)
@@ -217,7 +217,7 @@ private fun TrustCard(host: PluginHost, lp: LoadedPlugin) {
         Column(Modifier.fillMaxWidth().padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             lp.commands.forEach { e ->
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(commandWhere(m, e), style = ReliefTheme.type.label, color = c.ink, translate = false)
+                    Text(commandWhere(m, e), style = ReliefTheme.type.label, color = c.ink)
                     CommandText(e)
                 }
             }
@@ -259,7 +259,7 @@ private fun SourceRow(line: Pair<String, String>) {
     val c = ReliefTheme.colors
     Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         HIcon(line.first, size = 18.dp, brush = c.brush)
-        Text(line.second, style = ReliefTheme.type.body, color = c.ink, maxLines = 2, overflow = TextOverflow.Ellipsis, translate = false)
+        Text(line.second, style = ReliefTheme.type.body, color = c.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -272,8 +272,8 @@ private fun IssuesCard(lp: LoadedPlugin) {
             caption = if (lp.errors.isNotEmpty()) "修正 plugin.json 后会自动重新读取" else null,
         )
         Column(Modifier.padding(top = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            lp.errors.forEach { Text("· $it", style = monoStyle, color = c.ink, translate = false) }
-            lp.warnings.forEach { Text("· $it", style = monoStyle, color = c.ink2, translate = false) }
+            lp.errors.forEach { Text("· $it", style = monoStyle, color = c.ink) }
+            lp.warnings.forEach { Text("· $it", style = monoStyle, color = c.ink2) }
         }
     }
 }

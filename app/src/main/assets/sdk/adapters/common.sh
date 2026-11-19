@@ -116,9 +116,9 @@ download() {
     size="$(stat -c %s "$out" 2>/dev/null || echo 0)"
     if [ "${total:-0}" -gt 1 ]; then
       progress "$(( size * 100 / total ))"
-      [ $((tick % 5)) -eq 0 ] && log "已下载 $(( size / 1048576 )) / $(( total / 1048576 )) MB"
+      [ $((tick % 5)) -eq 0 ] && log "$(( size / 1048576 )) / $(( total / 1048576 )) MB"
     elif [ $((tick % 5)) -eq 0 ]; then
-      log "已下载 $(( size / 1048576 )) MB"
+      log "$(( size / 1048576 )) MB"
     fi
     tick=$((tick + 1))
     sleep 1

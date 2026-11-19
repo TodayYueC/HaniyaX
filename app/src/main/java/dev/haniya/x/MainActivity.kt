@@ -59,7 +59,7 @@ class MainActivity : ComponentActivity() {
                     enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
                 }
                 val toast = remember { ToastState() }
-                CompositionLocalProvider(LocalToast provides toast) {
+                CompositionLocalProvider(LocalToast provides toast, dev.haniya.relief.component.LocalLanguage provides dev.haniya.relief.i18n.I18n.state.value) {
                     AppBackground(Modifier.fillMaxSize()) {
                         Root()
                         ToastHost(toast)

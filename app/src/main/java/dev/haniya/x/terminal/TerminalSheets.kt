@@ -59,7 +59,7 @@ internal fun NewTabSheet(visible: Boolean, onDismiss: () -> Unit) {
     GlassSheet(visible = visible, onDismiss = onDismiss, title = "新建标签") {
         Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 16.dp)) {
             Text("同一个项目可以并行开多个标签。", style = ReliefTheme.type.caption, color = c.ink2)
-            ListRow("启动智能体", icon = "bot", subtitle = "Claude Code · Codex · OpenCode", onClick = {
+            ListRow("启动智能体", icon = "bot", subtitle = "Claude Code · Codex · Antigravity · OpenCode", onClick = {
                 onDismiss()
                 agentRequest = LaunchRequest()
             })

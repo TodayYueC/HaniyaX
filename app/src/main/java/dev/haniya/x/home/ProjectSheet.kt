@@ -237,7 +237,7 @@ fun NewProjectSheet(visible: Boolean, onDismiss: () -> Unit, onCreated: (String)
                 val now = rememberNow(1_000)
                 Text(
                     if (s.gitUrl != null) "正在克隆到 ${Paths.GUEST_PROJECTS}/${s.name}" else "正在创建 ${s.name}",
-                    style = ReliefTheme.type.bodyMedium, translate = false,
+                    style = ReliefTheme.type.bodyMedium,
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
@@ -316,7 +316,7 @@ fun TaskSheet(task: TaskRecord?, start: StartTarget, onDismiss: () -> Unit) {
             "${Fmt.shortPath(t.cwd)} · ${TaskList.statusLabel(t)} · $time",
             style = ReliefTheme.type.caption,
             color = if (t.status == TaskStatus.KilledBySystem) c.amberInk else c.ink2,
-            translate = false,
+           
         )
         Spacer(Modifier.height(10.dp))
 

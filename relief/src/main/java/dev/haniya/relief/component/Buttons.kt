@@ -116,7 +116,7 @@ fun IconCircleButton(
             .size(size)
             .glass(CircleShape, GlassLevel.Thin)
             .pressable(onClick = onClick, pressedScale = 0.99f, onClickLabel = contentDescription)
-            .semantics { this.contentDescription = contentDescription },
+            .semantics { this.contentDescription = dev.haniya.relief.i18n.I18n.tr(contentDescription) },
         contentAlignment = Alignment.Center,
     ) { HIcon(icon, size = iconSize, tint = tint ?: c.ink) }
 }
@@ -130,7 +130,7 @@ fun SmallRoundButton(icon: String, contentDescription: String, onClick: () -> Un
             .size(36.dp)
             .glass(CircleShape, GlassLevel.Thin)
             .pressable(onClick = onClick, pressedScale = 0.99f)
-            .semantics { this.contentDescription = contentDescription },
+            .semantics { this.contentDescription = dev.haniya.relief.i18n.I18n.tr(contentDescription) },
         contentAlignment = Alignment.Center,
     ) { HIcon(icon, size = 18.dp, tint = c.ink2) }
 }

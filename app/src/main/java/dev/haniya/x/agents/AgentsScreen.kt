@@ -157,7 +157,7 @@ private fun AgentCard(
                 }
                 Text(
                     AgentUiLogic.statusLine(status), style = ReliefTheme.type.caption, color = c.ink2,
-                    maxLines = 2, overflow = TextOverflow.Ellipsis, translate = false,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis,
                 )
             }
             if (running > 0) Badge("$running 个会话", tone = BadgeTone.Accent)
@@ -167,7 +167,7 @@ private fun AgentCard(
             Spacer(Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (status.latestVerified) Badge("可更新", tone = BadgeTone.Accent) else Badge("新版本未经验证", tone = BadgeTone.Amber)
-                Text("新版本 ${status.latest}", style = ReliefTheme.type.caption, color = c.ink2, maxLines = 1, translate = false)
+                Text("新版本 ${status.latest}", style = ReliefTheme.type.caption, color = c.ink2, maxLines = 1)
             }
         }
 
@@ -250,7 +250,7 @@ private fun JobProgress(job: JobSnapshot?, expectedSteps: Int, onShowLog: (Strin
                     step.label,
                     style = if (current) ReliefTheme.type.label else ReliefTheme.type.body.copy(fontSize = 13.sp),
                     color = if (current) c.ink else c.ink2,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis, translate = false,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
             }
         }
@@ -282,7 +282,7 @@ private fun FailureNotice(job: JobSnapshot, onRetry: () -> Unit, onCopy: () -> U
                 )
                 Text(
                     job.error ?: "安装脚本返回异常（退出码 ${job.exitCode ?: "未知"}）",
-                    style = ReliefTheme.type.body, color = c.ink, translate = false,
+                    style = ReliefTheme.type.body, color = c.ink,
                 )
             }
             SmallRoundButton("close", contentDescription = "收起", onClick = onClose)
@@ -307,7 +307,7 @@ internal fun Notice(text: String, modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         HIcon("warn", size = 18.dp, tint = c.amber, modifier = Modifier.padding(top = 2.dp))
-        Text(text, style = ReliefTheme.type.body, color = c.amberInk, modifier = Modifier.weight(1f), translate = false)
+        Text(text, style = ReliefTheme.type.body, color = c.amberInk, modifier = Modifier.weight(1f))
     }
 }
 
@@ -338,7 +338,7 @@ private fun LogSheet(job: JobSnapshot?, visible: Boolean, onDismiss: () -> Unit)
         }
         Text(
             state + (j.exitCode?.let { " · 退出码 $it" } ?: "") + " · ${j.log.size} 行",
-            style = ReliefTheme.type.caption, color = c.ink2, translate = false,
+            style = ReliefTheme.type.caption, color = c.ink2,
         )
         if (!j.error.isNullOrBlank()) {
             Spacer(Modifier.height(10.dp))
@@ -373,7 +373,7 @@ private fun UpdateSheet(agentId: String?, status: AgentStatus.Installed?, runnin
         if (adapter == null || s == null) return@GlassSheet
         Text(
             "从 ${s.version.ifBlank { "当前版本" }} 更新到 ${s.latest ?: "最新版本"}",
-            style = ReliefTheme.type.bodyMedium, translate = false,
+            style = ReliefTheme.type.bodyMedium,
         )
         Spacer(Modifier.height(12.dp))
         if (AgentUiLogic.updateNeedsWarning(s)) {

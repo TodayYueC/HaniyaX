@@ -91,6 +91,8 @@ fun SettingsScreen() {
     ) {
         SectionLabel("外观")
         AppearanceCard(s.palette)
+        SectionLabel("语言")
+        LanguageCard()
         SectionLabel("终端")
         TerminalCard(s)
         SectionLabel("后台运行")
@@ -127,6 +129,36 @@ private fun AppearanceCard(current: ReliefPalette?) {
                 leading = { Swatch(p) },
                 trailing = { CheckCircle(current == p, onClick = null, size = 24.dp, label = p.label) },
                 onClick = { App.settings.update { it.copy(palette = p) } },
+            )
+        }
+    }
+}
+
+/** 界面语言：跟随系统（中文系统用中文，其他语言用英文）/ 简体中文 / English。立即生效。 */
+@Composable
+private fun LanguageCard() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var choice by remember { mutableStateOf(dev.haniya.relief.i18n.I18n.choice(context)) }
+    GlassCard {
+        dev.haniya.relief.i18n.I18n.languages.forEachIndexed { i, l ->
+            if (i > 0) Divider()
+            val isSystem = l.code == dev.haniya.relief.i18n.I18n.SYSTEM
+            ItemRow(
+                title = l.nativeName,
+                subtitle = if (isSystem) "中文系统显示中文，其他语言显示英文" else null,
+                translate = isSystem,
+                leading = { IconTile(if (isSystem) "globe" else "note", size = 34.dp, filled = false) },
+                trailing = { CheckCircle(choice == l.code, onClick = null, size = 24.dp, label = l.nativeName) },
+                onClick = {
+                    choice = l.code
+                    dev.haniya.relief.i18n.I18n.setChoice(context, l.code)
+                    // Android 13+: also tell the system, so the app language shows in system settings.
+                    if (android.os.Build.VERSION.SDK_INT >= 33) runCatching {
+                        val lm = context.getSystemService(android.app.LocaleManager::class.java)
+                        lm?.applicationLocales = if (isSystem) android.os.LocaleList.getEmptyLocaleList()
+                        else android.os.LocaleList.forLanguageTags(l.code)
+                    }
+                },
             )
         }
     }

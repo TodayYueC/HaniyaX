@@ -599,7 +599,7 @@ private fun ConfirmEndSheet(rec: TaskRecord?, onDismiss: () -> Unit, onConfirm: 
     dev.haniya.relief.component.GlassSheet(visible = rec != null, onDismiss = onDismiss, title = "结束任务") {
         val r = rec ?: return@GlassSheet
         Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("结束「${r.title}」？", style = ReliefTheme.type.title, translate = false)
+            Text("结束「${r.title}」？", style = ReliefTheme.type.title)
             Text(
                 "会先请求程序正常退出，几秒后仍未退出则强制终止。正在进行的操作和未保存的内容可能丢失。" +
                     if (r.resumeCommand != null) "之后可以用「恢复会话」继续这次对话。" else "",

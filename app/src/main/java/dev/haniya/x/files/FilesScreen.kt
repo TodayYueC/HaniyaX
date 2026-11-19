@@ -316,7 +316,7 @@ private fun EntrySheet(
                     t != null -> {
                         Column(Modifier.fillMaxWidth().heightIn(max = 320.dp).insetSurface(RoundedCornerShape(Radii.sm), depth = 3.dp)
                             .verticalScroll(rememberScrollState()).padding(12.dp)) {
-                            Text(t.ifEmpty { "（空文件）" }, style = ReliefTheme.type.caption.copy(fontFamily = FontFamily.Monospace), translate = false)
+                            Text(t.ifEmpty { dev.haniya.relief.i18n.I18n.tr("（空文件）") }, style = ReliefTheme.type.caption.copy(fontFamily = FontFamily.Monospace), translate = false)
                         }
                         if (truncated) Text("文件较大，只显示了开头部分。", style = ReliefTheme.type.caption, color = c.ink2, modifier = Modifier.padding(top = 6.dp))
                     }
@@ -403,7 +403,7 @@ private fun NewFolderSheet(visible: Boolean, dir: String, onDismiss: () -> Unit,
     var name by remember(visible) { mutableStateOf("") }
     GlassSheet(visible = visible, onDismiss = onDismiss, title = "新建文件夹") {
         Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("位置：${GuestPaths.display(dir)}", style = ReliefTheme.type.caption, color = ReliefTheme.colors.ink2, translate = false)
+            Text("位置：${GuestPaths.display(dir)}", style = ReliefTheme.type.caption, color = ReliefTheme.colors.ink2)
             GlassField(name, { name = it }, placeholder = "文件夹名称")
             GuestPaths.validName(name).takeIf { name.isNotEmpty() }?.let { Text(it, style = ReliefTheme.type.caption, color = ReliefTheme.colors.amberInk) }
             PrimaryButton("创建", enabled = name.isNotBlank() && GuestPaths.validName(name) == null, onClick = {

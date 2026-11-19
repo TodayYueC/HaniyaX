@@ -18,24 +18,20 @@ object I18n {
     const val SOURCE = "zh-Hans"
     const val SYSTEM = "system"
 
+    /** Languages with a catalog: Simplified Chinese (the source) and English. Others fall back to English. */
     val languages = listOf(
         Language(SYSTEM, "跟随系统"),
         Language("zh-Hans", "简体中文"),
-        Language("zh-Hant", "繁體中文"),
         Language("en", "English"),
-        Language("ja", "日本語"),
-        Language("ko", "한국어"),
-        Language("es", "Español"),
-        Language("fr", "Français"),
-        Language("de", "Deutsch"),
-        Language("pt", "Português"),
-        Language("ru", "Русский"),
     )
 
     /** 当前生效的语言（已把「跟随系统」解析成具体语言）。 */
     @Volatile
     var lang: String = SOURCE
         private set
+
+    /** Compose-observable copy of [lang]; provide it as LocalLanguage so a switch recomposes the UI. */
+    val state: androidx.compose.runtime.MutableState<String> = androidx.compose.runtime.mutableStateOf(SOURCE)
 
     private var appContext: Context? = null
     private val catalogs = ConcurrentHashMap<String, Catalog>()
@@ -44,6 +40,7 @@ object I18n {
     fun init(context: Context) {
         appContext = context.applicationContext
         lang = resolve(choice(context))
+        state.value = lang
         Locale.setDefault(locale(lang))
     }
 
@@ -54,6 +51,7 @@ object I18n {
     fun setChoice(context: Context, code: String) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString("lang", code).apply()
         lang = resolve(code)
+        state.value = lang
         Locale.setDefault(locale(lang))
     }
 
@@ -62,18 +60,17 @@ object I18n {
 
     fun resolve(code: String): String {
         if (code != SYSTEM) return normalize(code)
-        val sys = Resources.getSystem().configuration.locales[0]
-        return normalize(sys.toLanguageTag())
+        // On Android 13+ a per-app locale also lands in Resources.getSystem(); ask LocaleManager for the real system one.
+        val sys = if (android.os.Build.VERSION.SDK_INT >= 33) runCatching {
+            appContext?.getSystemService(android.app.LocaleManager::class.java)?.systemLocales?.get(0)
+        }.getOrNull() else null
+        return normalize((sys ?: Resources.getSystem().configuration.locales[0]).toLanguageTag())
     }
 
     /** 兼容旧设置里的 zh-CN 等写法，未知语言回退英文。 */
     fun normalize(tag: String): String {
         val l = Locale.forLanguageTag(tag)
-        return when (l.language) {
-            "zh" -> if (l.script == "Hant" || l.country in setOf("TW", "HK", "MO")) "zh-Hant" else "zh-Hans"
-            "en", "ja", "ko", "es", "fr", "de", "pt", "ru" -> l.language
-            else -> "en"
-        }
+        return if (l.language == "zh") "zh-Hans" else "en"
     }
 
     fun locale(lang: String): Locale = when (lang) {

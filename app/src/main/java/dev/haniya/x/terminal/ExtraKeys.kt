@@ -149,7 +149,7 @@ private fun ExtraKeyButton(key: ExtraKey, visual: KeyVisual, width: Dp, onKey: (
                 }
             }
             .semantics {
-                contentDescription = key.description?.let { "${key.label}，$it" } ?: key.label
+                contentDescription = dev.haniya.relief.i18n.I18n.tr(key.label).let { l -> key.description?.let { "$l, ${dev.haniya.relief.i18n.I18n.tr(it)}" } ?: l }
                 role = Role.Button
                 if (visual != KeyVisual.Idle) stateDescription = if (visual == KeyVisual.Locked) "已锁定" else "已开启"
                 onClick { currentOnKey(currentKey); true }

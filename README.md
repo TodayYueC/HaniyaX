@@ -1,40 +1,66 @@
 # HaniyaX
 
-面向开发者的 Android Linux 工作台：免 Root、与原版 Termux 共存（包名 `dev.haniya.x`），终端、Claude Code / Codex / OpenCode、DeepSeek Harness 与后台服务共用同一套 Linux 环境。界面采用 Haniya Relief UI。
+**English** | [简体中文](README.zh-CN.md)
 
-原始需求见 `docs/BRIEF.md`，执行计划见 `docs/PLAN.md`。
+A rootless Linux workbench for developers on Android. HaniyaX installs alongside the original Termux (package `dev.haniya.x`) and runs the terminal, coding agents (Claude Code, Codex, Antigravity, OpenCode), DeepSeek Harness and background services in one shared Debian environment. The interface uses the Haniya Relief UI design system.
 
-## 构建
+The app language follows the system by default (Chinese on Chinese systems, English otherwise) and can be changed in **Settings → Language**.
+
+## Features
+
+- **Continue working** – the home screen shows recent projects, running tasks and background services; any project or task can be the default entry when the app opens.
+- **Terminal** – multiple tabs, CJK input method support, a compose bar for long text, paste preview, selection copy, scrollback search, customisable extra keys and fullscreen. Leaving a page, closing a tab and ending a task are separate actions; tasks killed by Android are shown as such and can be resumed.
+- **Agents on demand** – install, update, start and resume Claude Code, Codex, Antigravity and OpenCode in any project. Updates are your call; settings, sign-in and history are kept.
+- **Providers** – per-agent API endpoint, key and model management based on CC Switch's key-field model, with automatic snapshots and one-tap restore.
+- **DeepSeek Harness** – installed on demand and embedded in the app with Relief colours.
+- **Home cards** – agents can build home-screen cards with the `hx` command. Cards are declarative JSON rendered natively; any card that runs commands must be approved in the app first.
+- **Files** – an in-app file manager, a system document provider ("HaniyaX" in the file picker) and optional access to phone storage for projects.
+
+## Install
+
+Download the APK from [Releases](https://github.com/TodayYueC/HaniyaX/releases) (arm64). HaniyaX targets SDK 28 so it can run programs from its own data directory, which means it is distributed by sideloading rather than through Google Play.
+
+On first launch the app unpacks the bundled Debian system (about 250 MB once set up) and installs base packages from Debian's mirrors.
+
+## Build
 
 ```bash
-./tools/fetch-assets.sh                 # proot（Termux 软件源，RUNPATH 已改为 $ORIGIN）+ Debian trixie arm64 rootfs
-ARCH=x86_64 ./tools/fetch-assets.sh     # 可选：调试版用的 x86_64 运行时（模拟器）
-./gradlew :app:assembleRelease          # dist 用的正式版（arm64）
-./gradlew :app:testDebugUnitTest        # 单元测试
+./tools/fetch-assets.sh                 # proot (Termux repo, RUNPATH patched to $ORIGIN) + Debian trixie arm64 rootfs
+ARCH=x86_64 ./tools/fetch-assets.sh     # optional: x86_64 runtime for the debug build (emulator)
+./gradlew :app:assembleRelease          # release build (arm64)
+./gradlew :app:testDebugUnitTest        # unit tests
 ```
 
-需要 JDK 17、Android SDK（compileSdk 37.2、NDK 28.2）、podman（导出 rootfs）。
-正式版签名读取 `keystore/haniyax-release.jks` 与 `keystore/keystore.properties`（均不进 git）；缺失时使用调试签名。
+Requires JDK 17, the Android SDK (compileSdk 37.2, NDK 28.2) and podman (to export the rootfs).
+Release signing reads `keystore/haniyax-release.jks` and `keystore/keystore.properties` (not in git); without them the debug key is used.
 
-## 结构
+## Layout
 
-| 位置 | 内容 |
+| Path | Contents |
 |---|---|
-| `app/` | 主应用（Kotlin + Compose）。`runtime/` proot 工作区、任务与前台服务；`terminal/` 终端；`home/` 首页、项目；`agents/` 智能体；`providers/` 服务商（移植 CC Switch 的关键字段逻辑）；`dsh/` DeepSeek Harness 内嵌页；`plugins/` 首页卡片；`control/` 供 `hx` 使用的本机接口；`files/` 文件管理与系统文件提供者 |
-| `app/src/main/assets/sdk/` | 安装到工作区 `/opt/haniyax` 的 `hx` 命令、文档、卡片模板、智能体与 DSH 安装脚本 |
-| `relief/` | Haniya Relief UI 设计系统（Compose） |
-| `terminal-emulator/`、`terminal-view/` | Termux 终端模块（Apache-2.0），本地修改见 `UPSTREAM.md` |
+| `app/` | The app (Kotlin + Compose). `runtime/` proot workspace, tasks and foreground service; `terminal/` terminal; `home/` home and projects; `agents/` agents; `providers/` providers (CC Switch key-field logic ported); `dsh/` embedded DeepSeek Harness; `plugins/` home cards; `control/` local API used by `hx`; `files/` file manager and document provider |
+| `app/src/main/assets/sdk/` | Installed into the workspace at `/opt/haniyax`: the `hx` command, docs, card templates, agent and DSH install scripts |
+| `app/src/main/assets/i18n/` | UI translations: `source.txt` (Chinese source strings) and line-aligned `en.txt` |
+| `relief/` | Haniya Relief UI design system (Compose) and the runtime translation layer |
+| `terminal-emulator/`, `terminal-view/` | Termux terminal modules (Apache-2.0); local changes in `UPSTREAM.md` |
 
-## 工作区
+### Adding or fixing translations
 
-- proot + Debian trixie（glibc），以 root 运行，`HOME=/root`；项目默认在 `~/projects`。
-- targetSdk 28，以便执行应用目录中的程序；因此通过 APK 侧载分发。
-- 进程由前台服务持有：离开页面、锁屏后继续运行；Android 回收应用后，任务如实显示「已被系统结束」，可恢复或重新启动。
-- 工作区以「HaniyaX」出现在系统文件选择器中；也可授权访问手机存储，把手机里的文件夹作为项目。
+UI strings are written in Chinese in the source and translated at runtime. Each line of `en.txt` translates the same line of `source.txt`; placeholders `{0}`, `{1}` must be kept. `I18nCatalogTest` checks alignment and placeholders.
 
-## 已知限制
+## Workspace
 
-- **沙箱**：proot 中没有 bubblewrap / Landlock，Codex 与 DeepSeek Harness 的系统沙箱不可用；启动面板与 DSH 菜单中有明确的完全访问选项与说明。
-- **DSH 前端**：使用 DSH 自带的网页界面，由 HaniyaX 注入 Relief 配色（映射 DSH 的设计令牌）。按 Relief 重新组织导航的独立 DSH 插件尚未实现。
-- **后台存活**：Android 12+ 的子进程限制与厂商省电策略可能结束后台进程，设置页提供关闭指引，应用内无法绕过。
-- **性能**：proot 下 git、npm 等大量文件操作比原生慢；手机存储（/sdcard）不支持符号链接与可执行权限。
+- proot + Debian trixie (glibc), running as root with `HOME=/root`; projects live in `~/projects` by default.
+- Processes are owned by a foreground service, so they keep running when you leave a page or lock the screen. If Android reclaims the app, tasks are marked "ended by the system" and can be resumed or restarted.
+
+## Known limitations
+
+- **Sandboxes**: proot has no bubblewrap / Landlock, so the OS sandboxes of Codex and DeepSeek Harness are unavailable. The launch sheet and DSH menu offer an explicit full-access option with an explanation.
+- **Antigravity sign-in** uses a Google account through the browser, or a Gemini API key (`modelProvider: "gemini"` in `~/.gemini/antigravity-cli/settings.json` plus `GEMINI_API_KEY`).
+- **DSH front end**: the built-in DSH web UI with Relief colours injected; a separate mobile front end is not implemented yet.
+- **Background survival**: Android 12+ child-process limits and vendor battery policies may end background processes. Settings links to the relevant switches; the app cannot bypass them.
+- **Performance**: heavy file I/O (git, npm) is slower under proot than natively; phone storage (`/sdcard`) does not support symlinks or executable permissions.
+
+## License
+
+[Apache License 2.0](LICENSE). Third-party components and their licenses are listed in [NOTICE](NOTICE) and [UPSTREAM.md](UPSTREAM.md).

@@ -1,0 +1,1118 @@
+ ]; then echo '::error:: Adapter script not found 
+Claude Code's command sandbox is off by default; every action still goes through permission approval. HaniyaX never skips approvals.
+OpenCode has no system sandbox; actions are approved by its own permission rules.
+The workspace runs inside proot, where Codex's system sandbox (bubblewrap / Landlock) usually cannot start, so commands fail or keep asking for permission.
+When on, Codex starts with --sandbox danger-full-access: it can read and write any file in the workspace and use the network, and approval policies still apply. Only affects sessions opened afterwards.
+Unknown agent: {0}
+. Repair the workspace in Settings and try again'; exit 1; fi\n
+Home
+Invalid session id: {0}
+Install 
+Couldn't check the installation (exit code {0})
+Couldn't check the installation: {0}
+Update 
+Check timed out; the workspace may be busy. Try again shortly
+ · installed by you
+ · installed by HaniyaX
+{0} min ago
+{0} d ago
+{0} h ago
+{1}/{2}/{0}
+just now
+Installed · version unknown
+Not installed
+Checking…
+Installing…
+Updating…
+Version {0}
+Error: 
+ · {0} lines
+ · exit code {0}
+HaniyaX turns off agents' auto-update so updates are your call; settings, sign-in and history are kept when updating.
+{0} {1} is ready
+{0} session(s)
+{0} is ready
+Update anyway
+Update from {0} to {1}
+Stop
+Preparing…
+Update available
+Start
+Install
+The install script failed (exit code {0})
+Full log
+Official account sign-in happens in the terminal: start the agent and follow its prompts. You can also set the API endpoint, key and model under Providers.
+Stopped
+This version was installed by you. Updating installs a new copy the official way and leaves the existing one alone; new sessions use the new version.
+Install on demand and open real terminal sessions in your projects
+Collapse
+New version {0}
+The new version takes effect in sessions opened afterwards.
+New version not yet verified
+New version not yet verified: HaniyaX has been tested with {0} {1}.x and a new major version may bring incompatible changes. If something breaks you can reinstall {2}.
+Couldn't start the update
+Log
+Agents
+Update
+Update {0}
+Providers
+View full log
+Running sessions are not interrupted and keep the old version; the new version takes effect in sessions opened afterwards.
+Didn't finish
+Sign-in & providers
+Manage providers
+Settings, sign-in and past sessions are kept; the update doesn't touch {0}.
+Running
+This installation didn't finish
+This update didn't finish
+Check again
+{0} isn't installed yet. Install it once, then start it in any project.
+{0} is installing and can be started when it finishes.
+Last used
+Session
+Creating…
+Couldn't create
+Create and select
+Go to Agents
+Install
+Start {0}
+Create an empty folder under ~/projects
+Resume this session
+Or pick an earlier session
+Folder not found: {0}
+New project
+New session
+Couldn't start {0}
+Older sessions can be browsed in {0} with its own resume command.
+Starting…
+Checking whether {0} is installed…
+Reading past sessions…
+Use full access when the sandbox is unavailable
+Continue last session
+Enter a project name
+Run mode
+Choose an agent
+Choose a project
+Project name, e.g. my-app
+Invalid path: {0}
+Couldn't create folder: {0}
+Untitled session
+Invalid card id: use lowercase letters, digits and hyphens only
+Invalid service name
+This endpoint only accepts {0} requests
+No such endpoint; run hx help to see available commands
+│ The card's configuration has errors and will show as an error card on the home screen:\n
+Requests from browsers are not accepted
+Invalid token: use the token in ~/.haniyax/control.json (it changes when the app restarts)
+The card has {0} error(s) and will show as an error card on the home screen. It reloads automatically once plugin.json is fixed.
+The card has errors; fix them before exporting: {0}
+Only requests from this device (127.0.0.1) are accepted
+Commands changed: ask the user to re-confirm this card's commands in HaniyaX. Agents cannot confirm on their behalf.
+Error while handling the request: {0}
+No card with id {0} (folder {1}/plugins/{2} doesn't exist)
+No service named {0} (see hx service list)
+Invalid request
+Read timed out
+Missing parameters: {0}. Fill them in with hx plugin params {1} name=value.
+This card runs commands: ask the user to open it on the HaniyaX home screen, review the commands and tap "Allow these commands". Agents cannot allow on their behalf.
+Invalid Content-Length
+Invalid URL encoding
+Chunked transfer isn't supported; use Content-Length
+Empty request
+Incomplete request body
+Request body too large (limit {0} KB)
+Incomplete request headers
+Invalid request headers
+Request headers too large
+Invalid request method
+Invalid request line
+Invalid request path
+Install DeepSeek Harness
+Install mobile front end
+Couldn't read version information
+Update DeepSeek Harness
+DeepSeek Harness failed to start (exit code {0}). The last lines of the log are below.
+DeepSeek Harness's "read-only" and "workspace write" modes rely on a Linux sandbox (bubblewrap / Landlock). HaniyaX's workspace runs inside proot where these sandboxes aren't available, so tool calls would be refused.
+DeepSeek Harness menu
+DeepSeek's open-source agent workbench
+Sessions, tool calls, approvals and file changes all happen inside HaniyaX, no browser needed.
+Compatible with DeepSeek Harness {0}
+Loading
+Use DeepSeek Harness on your phone
+Choose "Full access" on phones
+To let it run commands, choose "Full access" (danger-full-access) under DeepSeek Harness Settings → General → Permissions. With the approval policy set to "Ask", it still asks before every run.
+Full access means commands can read and write the whole workspace; HaniyaX won't change this setting for you.
+Installs Node.js 24 and DeepSeek Harness (about 200 MB) into the workspace, sharing the same Linux environment as the terminal and agents.
+Up to date
+Connected · {0}
+Using DeepSeek Harness's built-in interface
+Couldn't read DeepSeek Harness status
+Can't check for updates right now
+Can't connect right now
+Update to {0}
+Updating only replaces program files; sessions, settings and sign-in are kept. Compatibility with the mobile front end is checked first, and the service restarts afterwards.
+New version {0} available
+Service
+Service log
+Not connected
+Not bundled
+Permissions & sandbox
+Starting
+Starting DeepSeek Harness…
+Checking DeepSeek Harness…
+Versions
+Got it
+Mobile front end
+Mobile front-end plugin
+Port {0} is already used by a DeepSeek Harness that HaniyaX doesn't manage, so its sign-in token isn't available. Use "Restart service" in the menu to let HaniyaX start it.
+Timed out waiting for DeepSeek Harness to start.
+Changes to configuration or providers take effect after a restart
+Restart service
+Reload
+Reload page
+Page is loading slowly
+Use when the page is blank or unresponsive
+This location can't be deleted
+The root folder can't be renamed
+Name can't be empty
+Name is too long
+Name can't contain /
+A file or folder with this name already exists
+Phone storage
+Folder doesn't exist
+Couldn't write the target file
+Couldn't create the folder
+Couldn't read {0}
+No permission to read this folder
+This name isn't allowed
+Some files couldn't be deleted
+Rename failed
+Up one level
+Import files from phone
+Location: {0}
+Use "{0}" as a project
+Save
+Save to phone
+Save failed
+Share
+Delete failed
+Delete this folder and everything in it? This can't be undone.
+Delete this file? This can't be undone.
+Grant access
+Import failed
+Saved
+Saved to phone
+Deleted
+Imported {0} file(s)
+Added to recent projects
+Phone storage doesn't support symlinks or executable permissions and is slower: npm install, some build tools and scripts may not work. Projects that install dependencies are better kept under Projects in the workspace and opened through HaniyaX in the system file manager.
+Open folder
+After granting access you can browse your phone's folders here and use them as projects; the terminal and agents can also read and write them under /sdcard.
+Projects in phone storage
+Folder name
+The file is large; only the beginning is shown.
+New name
+New folder
+Couldn't start the terminal
+Show hidden files
+No app can open this file
+Add to recent projects
+Open with another app
+Access phone storage
+Turn on "All files access" for HaniyaX in system settings
+Files in this location can't be shared
+This folder is empty
+This file can't be previewed here; open it with another app or save it to your phone.
+Choose a project folder
+Rename
+Hide files starting with .
+Projects
+(empty file)
+Workspace ~
+{0} task(s) running · {1} service(s) online
+{0} min
+{0} d
+{0} d {1} h
+{0} h
+{0} h {1} min
+{0} s
+Good afternoon
+Good afternoon
+Good night
+Workspace ready · no tasks running
+Good morning
+Good evening
+{0} / {1} online
+{0} running
+{0} project(s)
+Services & logs
+Work you start in the terminal or with agents shows up here
+External
+Pinned
+Open terminal
+Create a folder, or clone a Git repository into /root/projects
+Show all {0}
+Agents can register dev servers with hx service; status, address and logs appear here
+More actions
+Last 24 hours
+Recent projects
+No tasks in progress
+No background services yet
+No projects yet
+Tasks in progress
+{0}
+{0} installed
+{0} module(s) hidden · edit home
+Move up
+Move down
+Workspace
+Pin to top
+Done
+Import card
+Hidden modules
+Install on demand
+Files
+New session
+Show
+Service online
+Installing
+No hidden modules
+Terminal
+Edit
+Ask an agent to create a card with hx plugin new, or import a .hxcard file someone shared
+Settings
+Hide
+Home cards
+Git URLs must start with https://, ssh:// or git@
+Git URLs can't contain spaces
+The SSH key was rejected; set up ~/.ssh in the terminal first
+Clone failed (exit code {0})
+Clone failed: 
+Cloning took more than 10 minutes and was stopped. Clone large repositories in the terminal.
+Names can't start with -
+Names can't start with a dot
+Names may only contain letters, digits, CJK, dots, hyphens and underscores
+Name is too long (max {0} characters)
+git isn't in the workspace yet; run apt install git in the terminal
+A folder with this name already exists
+Repository not found; check the URL
+Couldn't resolve the host; check your network connection
+Couldn't reach the Git server; check your network or proxy
+Couldn't verify the host key; connect to this host once in the terminal first
+Certificate check failed; check the system time or proxy settings
+This repository needs sign-in. For private repositories set up credentials in the terminal first
+Git repository URL (optional)
+Started {0}
+Return straight to this task the next time HaniyaX opens
+Open this project the next time HaniyaX opens
+Return to this task next time
+Open {0} next time
+Remove from list
+Task ended
+Clone and create
+Create
+Unpin
+Only removes it from the home screen; files are not deleted
+Only removes this record
+Choose a folder in the workspace or phone storage as a project
+Back to session
+Back to the running session
+Pin to top
+Start a new task with the same command in the same folder
+Continue in background
+View in Files
+Open terminal here
+Will create {0}/{1}
+This ends the process in "{0}" and unsaved work will be lost. If you only want to leave, just go back; the task keeps running.
+Removed from list
+Created {0}
+Installed · {0}
+Already the default when the app opens
+Elapsed {0}. You can go back home; the project appears in the list when it's done.
+Record removed
+Running for {0}
+Home opens when the app starts
+New Shell tab with this project as the working directory
+Couldn't resume: {0}
+Couldn't open terminal: {0}
+Couldn't restart: {0}
+View record
+Cloning into {0}/{1}
+Creating {0}
+Installing or updating
+Browse, import or share the project's files
+Tap to open home instead
+Open with an agent
+Continue the last conversation with the agent's resume command
+Folder doesn't exist: {0}
+Remove record
+Manage
+End this task?
+Ends the process; unsaved work will be lost
+Open when the app starts
+Set as default
+Choose an existing folder
+Project name
+Clone finished but folder {0} wasn't found
+The workspace isn't ready yet
+A project with this name already exists: {0}
+Couldn't scan the projects folder
+Couldn't create {0}
+Couldn't open the default entry
+Ended
+Ended · exit code {0}
+Ended by the system
+{0}: done
+{0}: ended (exit code {1})
+Only local addresses can be opened
+These commands will run in the workspace:
+Ended with exit code {0}
+Couldn't run: {0}
+View command
+Stopping {0}
+Starting {0}
+Running…
+Restarting {0}
+No service named {0}
+No output
+Folder: {0}
+Confirmation only happens in HaniyaX; agents can't allow on your behalf.
+Fill in the card's parameters first
+Run
+This panel is empty
+This card runs commands in the workspace; review and allow them first.
+This card's commands changed and need to be confirmed again before they run.
+Error output
+The card's configuration has errors; not enabled yet
+{0} more issue(s)
+Runs commands
+Commands changed; confirm again
+Fill in parameters
+Card not found; it may have been removed
+View
+Review and allow
+Review and confirm
+View details
+Reading card…
+Fill in parameters first: {0}
+This card runs commands and is enabled after you confirm
+Only local addresses are allowed: {0}
+Response timed out
+File doesn't exist: {0}
+Couldn't check the process: {0}
+Can't connect
+Can't connect to {0}:{1}
+No file path set
+No process match pattern set
+No read permission: {0}
+Invalid port: {0}
+Read failed: {0}
+Path is outside the workspace: {0}
+Output isn't valid JSON
+This is a folder: {0}
+The card folder has no plugin.json
+Too many files in the card folder (max {0})
+The card folder is over 4 MB and can't be exported
+The archive contains an absolute path: {0}
+The archive contains an empty file name
+No plugin.json found in the archive
+A file name in the archive contains control characters
+Too many files in the archive (max {0})
+Unsafe path in the archive (contains ..): {0}
+Unsafe path in the archive: {0}
+The archive is over 4 MB when extracted
+Archive too large (limit {0} MB)
+File {0} is over 1 MB
+File {0} is over 1 MB and can't be exported
+Invalid JSON path, e.g. data.items[0].name
+icon: unknown icon {0}, using puzzle
+plugin.json isn't valid JSON: {0}
+plugin.json is over 256 KB
+plugin.json must be an object {} at the top level
+{0}.icon: unknown icon {1}, ignored
+Unavailable
+Can't be empty
+Duplicate action id {0}
+Parameter names may only use letters, digits and underscores and can't start with a digit
+Letters, digits, - and _ only, up to 40 characters
+Lowercase letters, digits and single hyphens only (kebab-case), up to 64 characters
+Only local addresses can be opened; must start with http://127.0.0.1 or http://localhost
+Only the local addresses 127.0.0.1, localhost or ::1
+Only local addresses are allowed; must start with http://127.0.0.1 or http://localhost
+Commands may only reference params, not sources (confirmed commands must be fixed)
+References an unknown data source sources.{0}
+References an undeclared parameter params.{0}
+Must match the folder name (folder is {0})
+Must be an integer from 1 to 1000
+Must be an integer from 1 to 1048576
+Must be an integer from 1 to 200
+Must be an integer from 1 to 300 (seconds)
+Must be an integer from 1 to 600 (seconds)
+Must be an integer from 100 to 599
+Must be one of body, caption or mono
+Must be one of start, stop or restart
+Must be one of string, number, path or boolean
+Must be one of text, json or lines
+Must be true or false
+Must be {0}
+Must be a string
+Must be an object {}
+Must be an array []
+Must be an integer
+Must be an integer (seconds)
+Must be a semantic version, e.g. 1.0.0
+Data source names may only use letters, digits and underscores and can't start with a digit
+Not recognised; available: ok, !ok, nonempty, empty, contains:text, equals:text, matches:regex, gt:number, lt:number
+At most {0} actions
+At most {0} parameters
+At most {0} blocks
+At most {0} data sources
+At most {0} items
+Maximum is 86400 seconds
+Minimum is 5 seconds
+Up to 60 characters
+Service names may only use letters, digits and . _ -
+Unknown field (apiVersion {0} supports: {1}; use an x- prefix for custom data)
+Unknown action type {0}; available: sheet, command, terminal, openUrl, service
+Unknown block type {0}; available: status, text, kv, metric, log, progress, sparkline
+Unknown data source type {0}; available: port, http, file, process, command
+Invalid template
+OK
+This card needs a newer HaniyaX (apiVersion {0}, this app supports {1})
+No action with id {0}
+No data source named {0}
+Port must be an integer from 1 to 65535
+Port must be an integer from 1 to 65535, or {{params.name}}
+Port must be an integer or {{params.name}}
+Missing required field
+Missing required field (currently {0})
+At least one item is required
+Only params can be referenced here, not sources
+Default value must be of type {0}
+local.json isn't valid JSON; default parameters are used
+local.json: must be an object at the top level
+Invalid card id
+Card folder doesn't exist
+Couldn't write to the card folder
+Couldn't replace the existing card folder
+plugin.json is missing
+Invalid id in plugin.json
+The card's configuration has errors
+Invalid archive
+If the commands changed, they need to be confirmed again.
+Import failed: {0}
+Updated card "{0}"
+A card with id {0} already exists{1}. Replacing it with v{2} keeps the local parameters; 
+Added card "{0}"
+The selected file can't be opened.
+The file wasn't imported; the existing card is unchanged.
+Can't import
+Can't import this file
+Couldn't read the file
+Replace
+Replace existing card
+Finish creating the workspace before importing cards.
+This isn't a valid .hxcard or .zip file
+"{0}" must be {1}
+These commands will run in the workspace
+You've allowed these commands. If the commands or their parameters change, you'll be asked to confirm again.
+Save parameters
+Save failed: {0}
+It reloads automatically once plugin.json is fixed
+Allow these commands
+Action "{0}" · runs in the terminal
+Action "{0}" · controls a background service
+Action "{0}" · asks again when tapped
+Action "{0}" · runs when tapped
+Card {0}
+Parameters
+Parameters saved
+Kept on this device only (local.json); not included when exporting or sharing
+Only reads files, ports and local addresses; never runs commands
+Also reads
+Command {0}
+The commands just changed; please review again
+Commands changed and need to be confirmed again. Until then the card won't run any commands.
+Open in terminal
+It may have been removed. Cards live in ~/.haniyax/plugins/{0}
+Export
+Export failed: {0}
+An exported .hxcard only contains card files such as plugin.json; local parameters and confirmations stay here.
+This deletes the card folder ~/.haniyax/plugins/{0} (including local parameters) and its command confirmations. This can't be undone.
+Allowed; the card is now running
+Card exported without local parameters
+Revoked; the card won't run commands anymore
+Card removed
+On or off
+Required
+To change the card, just tell an agent: "edit home card {0}"
+Card not found
+Tip
+Revoke
+Changing parameters used in commands requires confirming the commands again.
+Number
+Data source {0} · runs every {1} s
+File {0}
+Text
+Couldn't write to the chosen location
+Not allowed
+Not enabled
+Local address {0}
+Couldn't fully delete the card folder; try again later
+Until you confirm, the card won't run any commands; read-only content still shows.
+Confirmations are stored only in HaniyaX on this device; agents can't allow on your behalf.
+Remove
+Remove card
+Port {0}:{1}
+Fill in the parameters before confirming the commands.
+Path
+Process matching "{0}"
+Needs fixing
+Confirm again
+Preview
+Default: {0}
+  ← tap the card
+  latest 
+[log] 
+│ Type: 
+│ Missing parameters: 
+├ Actions\n
+Display only
+Runs commands (
+Commands changed; the user needs to confirm again in HaniyaX
+Allowed
+Not enough data points
+Nothing yet
+Not configured
+Awaiting confirmation
+Needs confirmation by the user in HaniyaX
+(hx plugin params {0} name=value)\n
+(couldn't parse: {0})
+[fill in parameters first]
+[commands need confirmation in HaniyaX]
+Fill in parameters first
+Commands need confirmation in HaniyaX
+Invalid JSON path in {{{0}}}
+Field {1} in {{{0}}} doesn't exist; available: {2}
+{{{0}}}: only the json field can take a path
+Unrecognised template {{{0}}}; only params or sources can be referenced
+Unrecognised template {{{0}}}; expected {{params.name}}
+Unrecognised template {{{0}}}; expected {{sources.name.field}}
+Template is missing the closing }} (position {0})
+Empty template expression {{}}
+local.json params.{0}: this parameter isn't declared in plugin.json
+local.json params.{0}: not a valid {1}
+Anthropic official account
+OpenAI / ChatGPT official account
+OpenCode built-in sign-in
+opencode.json can't be parsed (it may contain comments): {0}. Please tidy the file by hand first.
+opencode.json isn't an object at the top level
+settings.json isn't valid JSON: {0}
+settings.json isn't an object at the top level
+Zhipu GLM
+Not set
+ChatGPT account sign-in
+OpenAI official
+OpenCode built-in sign-in (opencode auth login)
+Official account · signed in
+Official account · not signed in
+Couldn't write {0}
+Not signed in
+API endpoint
+Anthropic compatible
+Claude sign-in
+Codex sign-in
+DeepSeek Harness has full provider and model settings of its own (Settings → Models) and checks config versions. To avoid two places rewriting the same config, HaniyaX doesn't modify it. Changes apply to new sessions without a restart.
+The key is written to ~/.codex/auth.json; switching back to the official account restores the previous ChatGPT sign-in.
+OpenAI compatible
+OpenCode sign-in
+echo 'Type /login in Claude Code to sign in'; claude
+Save only
+Start from a preset
+These {0} running sessions still use the configuration they started with and need to be reopened:
+Use
+Use a ChatGPT account. Sign-in opens a browser and returns to Codex when done.
+Use a Claude subscription or Console account. Sign in inside Claude Code (/login).
+Use OpenCode's built-in sign-in (opencode auth login).
+Use official account
+e.g. DeepSeek
+Save and use
+Switch failed
+Can't be undone after deleting (configuration already written is not affected)
+Delete this provider
+Only connection, authentication and model fields are changed; everything else stays as is
+Start from a preset such as DeepSeek, Kimi or Zhipu and just fill in your API key.
+Name
+Sign in in the terminal
+Most third-party services use an Auth Token (ANTHROPIC_AUTH_TOKEN).
+OK
+Official accounts
+Official default
+Restores the state from before the switch at {0}, covering: 
+Tool default
+Switched
+Switched {0}'s provider
+Restored the previous configuration
+Current
+In effect
+Fast model (optional, for small background tasks)
+Restore
+Restore previous working configuration
+Restore configuration
+Open DeepSeek Harness
+API protocol
+API type
+New {0} sessions use the new configuration right away.
+Providers & models
+Providers are managed in DeepSeek Harness's settings
+Endpoint
+Model
+Model name
+Note: these environment variables override the config file (in newly opened terminals):
+Add
+Add provider
+Add provider · {0}
+Leave empty to use the main model
+Delete
+Edit provider
+Custom API
+Authentication
+Authentication method
+Reading…
+Nothing to restore yet. HaniyaX saves a copy automatically before every provider switch.
+No custom providers yet
+Stored in the workspace (~/.haniyax/providers.json, readable only by you) and never leaves your device. Provider presets come from the open-source project CC Switch.
+The workspace hasn't been created yet; finish setting it up first
+Failed
+Failed (exit code {0})
+Timed out
+Command not found (exit code 127)
+Couldn't start: {0}
+Process killed by the system (exit code 137)
+Archive entry points outside the workspace: {0}
+Cancelled
+Couldn't create folder {0}
+Couldn't fully delete {0}
+Hard link target missing, skipped: {0} → {1}
+Skipped hard link {0} → {1}
+HaniyaX tools updated ({0} files, version {1})
+Invalid SDK path
+Couldn't replace {0}
+This package has no SDK files; only folders were created
+HaniyaX workspace: pending {0}
+{0} installation was interrupted; please try again.
+"{0}" didn't finish
+Download verification failed; the network may be unstable
+Download verification failed; the network may be unstable. Try again later.
+An error occurred: {0}
+Another package installation is running
+Another package installation is running; try again later.
+Command ended with exit code {0}
+Command ended with exit code {0}; see the log.
+Not enough storage
+Not enough storage: free up space on your phone (keep at least 1 GB) and try again.
+Not enough storage: about {0} MB needed, {1} MB available. Free up space and try again.
+Install HaniyaX tools
+The system image in the package is damaged
+The system image in the package is damaged; please reinstall HaniyaX.
+Install base packages
+Workspace setup didn't finish
+Workspace ready
+DNS, hosts, apt configuration and shell environment written
+Extracted {0} entries ({1} hard links copied, {2} device files etc. skipped)
+Couldn't start the workspace process: {0}
+Couldn't finish moving system files; please try again.
+Network unavailable
+Network unavailable: can't reach the Debian package repository. Check your connection and try again.
+Killed by the system
+Extract Debian system
+The extracted system is incomplete (missing /usr/bin/bash); please reinstall HaniyaX.
+Extract runtime
+See the log for details.
+Unexpected package source configuration; switched to deb.debian.org
+Runtime ready
+Runtime file missing: {0}; please reinstall HaniyaX.
+Runtime can't start
+The runtime couldn't start Debian (exit code {0}); see the log.
+The runtime can't start: this device blocks proot; see the log.
+Process killed by the system: likely battery optimisation or background limits. Keep HaniyaX in the foreground and try again.
+Configure network and base environment
+Error: {0}
+HaniyaX workspace
+{0} task(s) running · {1} service(s)
+Workspace
+Workspace not created yet
+Workspace not ready yet
+Creating workspace · {0}
+Shown while terminal tasks and background services are running
+HaniyaX sets up a complete Debian system inside the app, ready to use.
+HaniyaX install log
+git, curl, ripgrep and more, downloaded from Debian's package repository
+{0} lines
+One Linux environment
+Progress
+Create workspace
+You can leave this page; the workspace keeps getting ready in the background.
+Background services and logs, view and start/stop anytime
+Base packages
+Copy log
+Multi-tab terminal; tasks keep running when you leave the page
+Install log
+Size when done
+What will be set up
+Finished steps are kept and setup continues where it stopped. Base packages are downloaded from the internet.
+Finished steps are kept; retrying continues where it stopped
+Keep at least 1 GB free
+Free space now
+Install Claude Code, Codex, Antigravity and OpenCode on demand
+Can't access the clipboard
+Can't read
+Log copied
+No output yet
+Didn't finish this time
+Didn't finish this time; you can retry
+Preparing · step {0}/{1}
+Low on space
+System image
+About 250 MB
+The terminal, agents, projects and background services share one Linux environment
+Continue creating workspace
+In progress
+Retry
+Bundled with the app, no download
+Base packages are downloaded from the internet. You can leave this page; the workspace keeps getting ready in the background.
+Before first use
+Not valid JSON: 
+Health check path should start with /
+Starting
+Command can't be empty
+Invalid field format: 
+Exited
+Exited · exit code {0}
+Should be a JSON object
+Log path must be absolute
+Service names may only contain letters, digits, dots, hyphens and underscores, up to 64 characters
+Unknown error
+No response
+Folder must be an absolute path
+Port {0} is not between 1 and 65535
+Running · started by another program
+\n[haniyax] {0} start: {1}\n
+[haniyax] {0} process exited with exit code {1}\n
+Health check failed
+Failed to start: {0}
+Service {0} not found
+Couldn't write log {0}
+Couldn't read: {0}
+Folder {0} doesn't exist
+Port {0} is already used by another program; not started again
+Couldn't read the log
+Couldn't read service definitions
+Skipped invalid service definition {0}: {1}
+This service wasn't started by HaniyaX; stop it in the terminal that started it
+Last exit
+Only the last {0} lines
+Stops it first, then deletes ~/.haniyax/services/{0}.json. Logs and project files are kept.
+Health check
+Delete service
+Delete service {0}?
+Background service
+Command
+Open in browser
+Address
+Copy address
+Its definition file may have been removed or is unreadable
+Definition
+Deleted service {0}
+Copied {0} log lines
+Address copied
+Uptime
+Starts automatically when HaniyaX opens and is ready
+Service not found
+Couldn't save: {0}
+Last {0} lines
+Not declared
+Reading…
+Reading service…
+Refreshes every 2 s
+No app can open the link
+Status
+Environment variables
+Started by HaniyaX
+Managed by HaniyaX
+Registered by {0} · ~/.haniyax/services/{1}.json
+Started by another program; stop it where it was started
+Folder
+Port
+The port is already used by another program; HaniyaX won't start it again.
+Managed by
+No log to copy yet
+No log output yet
+Process
+Exit code {0}
+Restart
+Start with workspace
+Couldn't write: {0}
+Couldn't save {0}
+Couldn't read {0}; using defaults
+Turn on "Disable child process restrictions" in Developer options. You can also run the command below from a computer.
+This system has no child process restrictions; nothing to do.
+Connect to a computer with USB debugging on and run the command below. Some systems reset it after a reboot, so run it again then.
+Connect to a computer with USB debugging on and run the command below once; it stays in effect after rebooting.
+Reset
+Since Android 12 the system may silently end child processes started by apps (phantom processes), so the terminal, agents and background services can exit suddenly.
+Debian root filesystem with installed software and the projects under /root
+GPL-2.0 · view source
+HaniyaX uses these projects
+Inter font
+MIT · provider presets
+proot (Termux fork)
+{0} chars
+~/projects $ git status\nCJK 中文 Aa 0O 1lI {}
+Keep awake
+When allowed, tasks are less likely to be paused while the screen is locked
+About
+Add HaniyaX plugin notes
+Delete the whole Linux environment and create it again
+Storage used
+Each package follows its own free software license
+Running in background
+Copy command
+Appearance
+Child process restrictions
+Font size
+When installing agents, add a short note pointing to {0} in CLAUDE.md / AGENTS.md so they can build home cards
+Ends all tasks and services and deletes the whole Linux environment: installed software, agents and their sign-in, and the projects and settings under /root are gone for good. HaniyaX then restarts and creates the workspace again.
+Disabled
+Allowed; the system won't pause HaniyaX to save battery while the screen is locked
+Command copied
+Open-source licenses
+Ignore battery optimisation
+or more than
+Open Developer options
+Manage API endpoints, models and sign-in per agent
+Couldn't open Developer options; find them in system settings
+Keeps the CPU awake while tasks run; uses a little more battery
+Calculating…
+Restarting…
+Light
+Platinum when light, Obsidian when dark
+Dark
+System
+Also preview when this many lines are reached
+Design guidelines and components
+Please don't close HaniyaX.
+First tap the build number repeatedly in "About phone" to enable Developer options
+Preview first when longer than this many characters
+Type "{0}" to confirm
+This device has already disabled the restriction.
+This device doesn't offer battery optimisation settings
+Restart HaniyaX
+Reset workspace
+Reset and restart
+When the keyboard opens, write in the input bar first and then send; easier for CJK input
+Open compose bar by default
+Couldn't delete the workspace record; try again later
+Couldn't reopen HaniyaX
+A few files couldn't be deleted. The workspace is recreated after restarting; if problems remain, clear HaniyaX's data in system settings
+Deleting workspace files…
+Ending tasks and services…
+Reset workspace failed
+Error while resetting: {0}
+On
+Locked
+Interrupt the current command
+Fullscreen
+Delete to the start of the line
+Delete the previous word
+Function keys
+Tap applies to the next key, double-tap locks
+Reverse tab (Shift+Tab)
+Forward delete
+Enter
+Write in the input bar and then send; good for CJK and long text
+Common
+Extra keys configuration isn't valid JSON; using the default layout
+Extra keys configuration has no rows; using the default layout
+Extra keys configuration has no usable keys; using the default layout
+Suspend to background
+Search
+Search command history
+Compose
+Actions
+Arrows & paging
+Unrecognised key: {0}
+Show or hide the keyboard
+At most {0} rows; extra rows ignored
+Clear screen
+Move to end of line
+Move to start of line
+Symbols
+Row {0} isn't a list; skipped
+Row {0} allows at most {1} keys; extra keys ignored
+Paste clipboard (long text is previewed first)
+Key combos
+End input / exit
+Complete
+Exit / cancel
+Backspace
+Keyboard
+Hide the tab bar and system bars
+Ended by the system (Android reclaimed the process)
+The app was reclaimed while in the background, and the program in the terminal ended with it. The output on screen can't be recovered.
+Couldn't start
+Couldn't start: 
+The program exited with a non-zero status; its last output is above.
+The program has exited.
+The program exited normally.
+The program was interrupted with Ctrl+C.
+The program was ended by signal {0}.
+Process ended
+Process ended · exit code {0}
+Couldn't save terminal preferences
+Couldn't read terminal preferences; using defaults
+{0} characters · {1} lines. Check the content before sending it to the terminal.
+… {0} more lines
+"Resume session" continues the last conversation with {0} in the same folder.
+Previous
+Next
+You can continue this conversation later with "Resume session".
+You can also long-press the extra keys bar
+The task isn't running, so it can't paste
+Asks the program to exit first and forces it after a few seconds. Work in progress and unsaved content may be lost.
+Paste as one line
+Close search
+Close tab
+The clipboard has no text
+Send
+Enter after sending
+Only hides the tab; the task keeps running in the background and can be found under Tasks in progress on the home screen
+Back to home; the task keeps running, come back anytime
+Type here (CJK input and paste supported), then tap Send
+Sent the end signal
+Copied to clipboard
+Resume session
+Search scrollback
+Hide compose bar
+Open a new Shell, or start an agent in a project. Running tasks can be found under Tasks in progress on the home screen.
+New tab
+Couldn't start the terminal: {0}
+No results
+Tab closed; the task keeps running in the background
+Tab actions
+Leave (keep running)
+Paste
+Paste preview
+Ends the process; unsaved work may be lost
+End "{0}"?
+End task
+Customise extra keys
+Back to home (tasks keep running)
+No open tabs yet
+Restart
++ New row
+Shell · Home
+Delete
+Text to send
+Move right
+You can open several tabs in the same project.
+Start an agent
+Move left
+Reset to default
+Key label
+Text macro (e.g. git status⏎; use \\n for Enter)
+Text (CJK input supported)
+Add macro
+Select a key to move or delete it; add new keys below.
+Move to another row
+Row {0}
+Input method
+Character by character
+Quick add
+Bar chart
+Trend
+Decrease
+Increase
+Done
+Not done
+{0}/{1}
+Today
+Other date
+Day before yesterday
+Cancel
+Yesterday
+OK
+Close
+Sheet
+Back
+Undone
+Undo
+日本語
+简体中文
+繁體中文
+Follow system
+Obsidian
+Moonstone
+Smoky Rose
+Platinum
+Champagne
+Check environment
+Get version info
+Couldn't get the latest version from downloads.claude.ai (the service may be unreachable or the region unsupported).
+Invalid version format: {0}
+Download official install script
+The downloaded install.sh looks wrong; try again later.
+Download and install Claude Code {0}
+Verify installation
+Installed, but {0} wasn't found. {1}
+claude --version didn't return a version; the installation may be incomplete. {0}
+Couldn't get the latest version '; exit 1; } ;;
+Couldn't get Codex's latest version from GitHub; try again later.
+Download Codex {0}
+No release files for Codex {0} on GitHub.
+Unsupported architecture: Codex {0} has no {1} package.
+Verify and extract
+Downloaded file failed verification (SHA-256 mismatch); please retry.
+Unexpected package contents: bin/codex is missing.
+Codex can't run in this environment (codex --version printed nothing). {0}
+Switch to new version
+Couldn't replace the existing {0} folder
+Couldn't update {0}
+codex --version didn't return a version.
+Not enough disk space or can't write the temp folder ({0}). Free up space and try again.
+Network unreachable ({0}, curl exit code {1}). Check your network or proxy and try again.
+{0} was ended by the system (possibly low memory). Close other apps and try again.
+The install script failed ({0}, exit code {1}): {2}
+The install script failed ({0}, exit code {1}).
+Couldn't create temp folder {0}
+Couldn't create a temp folder (out of disk space?)
+Unsupported architecture: detected {0}; agents only ship arm64 and x86_64 builds.
+Not enough disk space: about {0} MB needed, {1} MB available. Free up phone storage and try again.
+Can't reach {0}. Check your network, proxy or DNS settings and try again.
+Couldn't get the latest version from opencode.ai; try again later.
+The downloaded install script looks wrong; try again later.
+Download and install OpenCode {0}
+opencode --version didn't return a version; it may not run in this environment. {0}
+Network unreachable ({0}). Check your network and try again.
+Not enough storage ({0}). Free up phone space and try again.
+{0} failed: {1}
+{0} is missing. Reset the workspace in Settings, or run apt-get install -y curl xz-utils.
+Prepare Node.js 24
+Unsupported architecture: {0}
+No Node.js 24 build found for linux-{0}.
+Node.js download failed verification; please retry.
+Couldn't get DeepSeek Harness version info from npm; check your network.
+DeepSeek Harness {0} isn't compatible with the current mobile front end (requires {1}); cancelled. Wait for a mobile front-end update before upgrading.
+Prepare workspace folder
+Install mobile front-end plugin
+The mobile front end requires DeepSeek Harness {0}; you have {1}. Update DeepSeek Harness first.
+Antigravity doesn't enable its terminal sandbox by default; actions are approved by its own permission settings.
+Couldn't get Antigravity release info; try again later.
+Only the latest version {0} is published; ignoring the requested {1}
+Download Antigravity {0}
+Downloaded file failed verification (SHA-512 mismatch); please retry.
+Unexpected package contents: antigravity is missing.
+Antigravity can't run in this environment (agy --version printed nothing). {0}
+agy --version didn't return a version.
+Language
+Chinese on Chinese systems, English otherwise

@@ -88,7 +88,7 @@ fun DshScreen() {
         is DshState.Error -> Page("DeepSeek Harness") {
             GlassCard {
                 Text("无法读取 DeepSeek Harness 状态", style = ReliefTheme.type.h3)
-                Text(s.message, style = ReliefTheme.type.caption, color = ReliefTheme.colors.ink2, translate = false)
+                Text(s.message, style = ReliefTheme.type.caption, color = ReliefTheme.colors.ink2)
                 Spacer(Modifier.height(12.dp))
                 GlassButton("重试", onClick = { DshManager.refresh() }, icon = "refresh")
             }
@@ -138,7 +138,7 @@ private fun JobCard(job: JobSnapshot) {
         }
         if (job.error != null) {
             Spacer(Modifier.height(10.dp))
-            Text(job.error, style = ReliefTheme.type.body, color = c.amberInk, translate = false)
+            Text(job.error, style = ReliefTheme.type.body, color = c.amberInk)
         }
         Spacer(Modifier.height(10.dp))
         LogTail(job.log.takeLast(6))
@@ -282,7 +282,7 @@ private fun WorkPage(versions: DshVersions) {
                             is Conn.Failed -> c.amber to "未连接"
                         }
                         Box(Modifier.size(7.dp).background(dot, CircleShape))
-                        Text(label, style = ReliefTheme.type.caption, color = c.ink2, translate = false)
+                        Text(label, style = ReliefTheme.type.caption, color = c.ink2)
                     }
                 }
                 IconCircleButton("sliders", contentDescription = "DeepSeek Harness 菜单", onClick = { menuOpen = true }, size = 40.dp, iconSize = 18.dp)

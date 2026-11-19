@@ -173,6 +173,31 @@ object Adapters {
     )
 
     /**
+     * Antigravity CLI (Google) — command `agy`. Release manifest of the official installer
+     * (https://antigravity.google/cli/install.sh): <base>/manifests/linux_arm64.json → version / url / sha512.
+     * Installed by assets/sdk/adapters/antigravity.sh under ~/.local/share/haniyax/agents/antigravity/<v>/agy with
+     * ~/.local/bin/agy switched atomically. Docs (antigravity.google/docs/cli/reference): `--continue` resumes the latest
+     * conversation of the cwd, `--conversation <id>` a specific one; AGY_CLI_DISABLE_AUTO_UPDATE=true stops self-update.
+     * No OS sandbox unless `--sandbox` is passed (off by default). Global rules: ~/.gemini/AGENTS.md.
+     */
+    val antigravity = AgentAdapter(
+        info = AgentInfo("antigravity", "Antigravity", "Google", "bot"),
+        binary = "agy",
+        latest = LatestSource.JsonField(
+            "https://antigravity-cli-auto-updater-974169037036.us-central1.run.app/manifests/linux_arm64.json", "version",
+        ),
+        verifiedMajor = 1,
+        managedPrefixes = listOf("$H/.local/share/haniyax/agents/antigravity/"),
+        env = mapOf("AGY_CLI_DISABLE_AUTO_UPDATE" to "true"),
+        continueArgs = listOf("--continue"),
+        resumeArgs = { listOf("--conversation", it) },
+        fullAccessArgs = null,
+        sandboxNote = "Antigravity 默认不启用终端沙箱，操作按它自己的权限设置审批。",
+        hintFile = "$H/.gemini/AGENTS.md",
+        keptPaths = listOf("~/.gemini"),
+    )
+
+    /**
      * OpenCode v2 — official installer https://opencode.ai/v2/install (→ ~/.opencode/bin/opencode, npm package
      * @opencode/cli-linux-arm64). Latest: https://opencode.ai/update/api/latest/cli/npm (.version). Resume:
      * `opencode --continue` / `opencode --session <id>`; sessions: `opencode session list --format json`.
@@ -197,7 +222,7 @@ object Adapters {
         keptPaths = listOf("~/.config/opencode", "~/.local/share/opencode"),
     )
 
-    val all: List<AgentAdapter> = listOf(claude, codex, opencode)
+    val all: List<AgentAdapter> = listOf(claude, codex, antigravity, opencode)
 
     fun get(id: String): AgentAdapter = all.firstOrNull { it.id == id } ?: throw IllegalArgumentException("未知的智能体：$id")
     fun find(id: String?): AgentAdapter? = all.firstOrNull { it.id == id }

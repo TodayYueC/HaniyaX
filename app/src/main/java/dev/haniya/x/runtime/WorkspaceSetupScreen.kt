@@ -134,7 +134,7 @@ private fun IntroCard() {
         )
         Spacer(Modifier.height(12.dp))
         Feature("terminal", "多标签终端，离开页面后任务继续运行")
-        Feature("bot", "按需安装 Codex、Claude Code、OpenCode")
+        Feature("bot", "按需安装 Claude Code、Codex、Antigravity、OpenCode")
         Feature("server", "后台服务与日志，随时查看与启停")
     }
 }

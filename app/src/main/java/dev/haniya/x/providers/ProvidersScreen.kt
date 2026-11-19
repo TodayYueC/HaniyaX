@@ -166,7 +166,7 @@ fun ProvidersScreen(agentId: String?) {
                     Column(Modifier.weight(1f)) {
                         Text(p.name, style = ReliefTheme.type.h3, translate = false)
                         Text(p.baseUrl, style = ReliefTheme.type.caption, color = c.ink2, maxLines = 1, translate = false)
-                        Text("${p.model.ifBlank { "默认模型" }} · ${Masks.key(p.apiKey)}", style = ReliefTheme.type.caption, color = c.ink2, translate = false)
+                        Text("${p.model.ifBlank { "默认模型" }} · ${Masks.key(p.apiKey)}", style = ReliefTheme.type.caption, color = c.ink2)
                     }
                     if (currentId == p.id) Badge("当前") else GlassButton("使用", size = ButtonSize.Small, onClick = { use(tool, p) })
                 }

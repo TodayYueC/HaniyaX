@@ -72,7 +72,7 @@ fun GlassBottomNav(
                     Modifier.weight(1f).fillMaxHeight()
                         .clip(RoundedCornerShape(Radii.md))
                         .selectable(selected = on, role = Role.Tab, onClick = { onSelect(i) })
-                        .semantics { contentDescription = label },
+                        .semantics { contentDescription = dev.haniya.relief.i18n.I18n.tr(label) },
                     contentAlignment = Alignment.Center,
                 ) {
                     if (well > 0.01f) Box(
@@ -87,7 +87,7 @@ fun GlassBottomNav(
             Modifier.size(58.dp)
                 .gradientSurface(CircleShape, glow = 14.dp)
                 .pressable(onClick = onQuickRecord, pressedScale = 0.96f, onClickLabel = "快速记录")
-                .semantics { contentDescription = quickLabel },
+                .semantics { contentDescription = dev.haniya.relief.i18n.I18n.tr(quickLabel) },
             contentAlignment = Alignment.Center,
         ) { HIcon("plus", size = 26.dp, tint = Color.White) }
     }

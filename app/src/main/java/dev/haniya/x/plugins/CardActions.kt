@@ -215,7 +215,7 @@ internal class ActionRunner(
                 s.result != null -> "已结束，退出码 ${s.result.code}"
                 else -> ""
             }
-            Text(status, style = ReliefTheme.type.caption, color = c.ink2, translate = false)
+            Text(status, style = ReliefTheme.type.caption, color = c.ink2)
             val r = s.result
             if (r != null) {
                 val out = SourceValue.splitLines(r.stdout).takeLast(400)
@@ -273,7 +273,7 @@ internal fun CommandText(e: CommandEntry, modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(e.run, style = monoStyle, color = c.ink, translate = false)
-        if (e.cwd != null) Text("目录：${e.cwd}", style = ReliefTheme.type.caption, color = c.ink2, translate = false)
+        if (e.cwd != null) Text("目录：${e.cwd}", style = ReliefTheme.type.caption, color = c.ink2)
     }
 }
 

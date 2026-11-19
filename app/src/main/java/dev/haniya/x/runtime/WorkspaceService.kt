@@ -115,7 +115,7 @@ class WorkspaceService : Service() {
         val nm = getSystemService(NotificationManager::class.java) ?: return
         if (nm.getNotificationChannel(CHANNEL) == null) {
             nm.createNotificationChannel(
-                NotificationChannel(CHANNEL, "工作区", NotificationManager.IMPORTANCE_LOW).apply {
+                NotificationChannel(CHANNEL, dev.haniya.relief.i18n.I18n.tr("工作区"), NotificationManager.IMPORTANCE_LOW).apply {
                     description = "终端任务与后台服务运行时显示"
                     setShowBadge(false)
                 },
@@ -126,10 +126,10 @@ class WorkspaceService : Service() {
     private fun buildNotification(v: View): Notification {
         val ws = v.ws
         val text = when {
-            ws.ready -> "${v.counts.running} 个任务运行中 · ${v.services} 个服务"
-            ws.installing -> "正在创建工作区 · ${ws.step.orEmpty()}"
-            ws.failed -> "工作区尚未就绪"
-            else -> "工作区尚未创建"
+            ws.ready -> dev.haniya.relief.i18n.I18n.tr("{0} 个任务运行中 · {1} 个服务", v.counts.running, v.services)
+            ws.installing -> dev.haniya.relief.i18n.I18n.tr("正在创建工作区 · {0}", dev.haniya.relief.i18n.I18n.tr(ws.step.orEmpty()))
+            ws.failed -> dev.haniya.relief.i18n.I18n.tr("工作区尚未就绪")
+            else -> dev.haniya.relief.i18n.I18n.tr("工作区尚未创建")
         }
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
@@ -142,7 +142,7 @@ class WorkspaceService : Service() {
         )
         val b = NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_launcher_fg)
-            .setContentTitle("HaniyaX 工作区")
+            .setContentTitle(dev.haniya.relief.i18n.I18n.tr("HaniyaX 工作区"))
             .setContentText(text)
             .setContentIntent(pi)
             .setOngoing(true)

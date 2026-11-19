@@ -141,8 +141,8 @@ fun rememberPluginImporter(): () -> Unit {
         val cand = candidate
         if (cand != null) {
             Text(
-                "已有一张 id 为 ${cand.id} 的卡片${cand.existingVersion?.let { "（v$it）" } ?: ""}。替换为 v${cand.version} 后，本机参数会保留；" +
-                    if (cand.trust == PluginTrust.RunsCommands) "如果命令有变化，需要重新确认。" else "",
+                dev.haniya.relief.i18n.I18n.tr("已有一张 id 为 {0} 的卡片{1}。替换为 v{2} 后，本机参数会保留；", cand.id, cand.existingVersion?.let { " (v$it)" } ?: "", cand.version) +
+                    if (cand.trust == PluginTrust.RunsCommands) dev.haniya.relief.i18n.I18n.tr("如果命令有变化，需要重新确认。") else "",
                 style = ReliefTheme.type.body, color = c.ink, translate = false,
             )
             Row(Modifier.fillMaxWidth().padding(top = 18.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -158,7 +158,7 @@ fun rememberPluginImporter(): () -> Unit {
     OverlaySheet(open = showFailure, onDismiss = { showFailure = false }, title = failure?.title ?: "无法导入") {
         val c = ReliefTheme.colors
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            failure?.errors?.take(12)?.forEach { Text("· $it", style = monoStyle, color = c.ink, translate = false) }
+            failure?.errors?.take(12)?.forEach { Text("· $it", style = monoStyle, color = c.ink) }
             val more = (failure?.errors?.size ?: 0) - 12
             if (more > 0) Text("另有 $more 处问题", style = ReliefTheme.type.caption, color = c.ink2)
             Text("文件没有导入，现有卡片保持不变。", style = ReliefTheme.type.caption, color = c.ink2, modifier = Modifier.padding(top = 6.dp))

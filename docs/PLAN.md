@@ -10,7 +10,7 @@ HaniyaX 是一款免 Root、与原版 Termux 共存的 Android 开发者工作�
 |---|---|---|
 | Linux 环境 | **proot + Debian arm64 单一环境** | 改包名后 Termux 官方源不可用；Claude Code、OpenCode、DSH 均无 Android 原生构建（DSH 的文件锁在 `android` 平台直接抛错）。glibc 环境里四个工具都能用官方 Linux 版 |
 | Termux 复用范围 | **仅 `terminal-emulator` + `terminal-view`（Apache-2.0）** | 会话服务、扩展键、App 壳自己重写，许可证由你自定 |
-| 验收设备 | **arm64 真机为主** | 需要你在手机上允许 USB 调试（当前 `365fbd2f` 为未授权） |
+| 验收设备 | **arm64 真机为主** | 需要你在手机上允许 USB 调试 |
 
 与原始设想的偏差（已获确认）：没有 Termux 的 `pkg`，软件用 Debian `apt`；proot 下 git、npm 等密集读写会比原生慢。
 
