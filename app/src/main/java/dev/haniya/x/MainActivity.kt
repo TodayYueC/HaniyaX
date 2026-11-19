@@ -14,6 +14,10 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -95,6 +99,7 @@ private fun Root() {
     StartRouter.ApplyOnce()
     BackHandler(enabled = Nav.stack.size > 1) { Nav.back() }
     val reduced = LocalReducedMotion.current
+    Box(Modifier.fillMaxSize()) {
     AnimatedContent(
         targetState = Nav.current,
         transitionSpec = {
@@ -114,7 +119,37 @@ private fun Root() {
                 is Route.Plugin -> PluginScreen(route.pluginId)
                 is Route.Service -> ServiceScreen(route.name)
                 is Route.Files -> FilesScreen(route.path, route.pickProject)
+                Route.Projects -> dev.haniya.x.home.ProjectsScreen()
+                Route.Services -> dev.haniya.x.home.ServicesScreen()
             }
         }
     }
+    if (Nav.isTabRoot) MainTabBar(Modifier.align(androidx.compose.ui.Alignment.BottomCenter))
+    }
+}
+
+/** Floating relief bar: icon tabs plus the glazed round key, which opens the terminal. */
+@Composable
+private fun MainTabBar(modifier: Modifier) {
+    val items = remember {
+        listOf(
+            dev.haniya.relief.component.NavItem("home", "首页", "home"),
+            dev.haniya.relief.component.NavItem("projects", "项目", "folder"),
+            dev.haniya.relief.component.NavItem("agents", "智能体", "bot"),
+            dev.haniya.relief.component.NavItem("services", "服务", "server"),
+            dev.haniya.relief.component.NavItem("settings", "设置", "sliders"),
+        )
+    }
+    val selected = Nav.tabs.indexOf(Nav.current).coerceAtLeast(0)
+    dev.haniya.relief.component.GlassBottomNav(
+        items = items,
+        selected = selected,
+        onSelect = { Nav.selectTab(Nav.tabs[it]) },
+        onQuickRecord = { Nav.go(Route.Terminal(null)) },
+        quickIcon = "terminal",
+        quickText = "终端",
+        modifier = modifier
+            .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.Companion.navigationBars)
+            .padding(bottom = 12.dp),
+    )
 }

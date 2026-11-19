@@ -979,7 +979,8 @@ public final class TerminalView extends View {
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (TERMINAL_VIEW_KEY_LOGGING_ENABLED)
             mClient.logInfo(LOG_TAG, "onKeyDown(keyCode=" + keyCode + ", isSystem()=" + event.isSystem() + ", event=" + event + ")");
-        if (mEmulator == null) return true;
+        // Without a live session, still let Back through so the screen can be left (HaniyaX).
+        if (mEmulator == null) return keyCode == KeyEvent.KEYCODE_BACK ? super.onKeyDown(keyCode, event) : true;
         if (isSelectingText()) {
             stopTextSelectionMode();
         }

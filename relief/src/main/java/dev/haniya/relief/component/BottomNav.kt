@@ -49,10 +49,12 @@ fun GlassBottomNav(
     onSelect: (Int) -> Unit,
     onQuickRecord: () -> Unit,
     modifier: Modifier = Modifier,
+    quickIcon: String = "plus",
+    quickText: String = "快速记录",
 ) {
     val c = ReliefTheme.colors
     val h = 62.dp
-    val quickLabel = tr("快速记录")
+    val quickLabel = tr(quickText)
     Row(
         modifier.fillMaxWidth().padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -86,9 +88,9 @@ fun GlassBottomNav(
         Box(
             Modifier.size(58.dp)
                 .gradientSurface(CircleShape, glow = 14.dp)
-                .pressable(onClick = onQuickRecord, pressedScale = 0.96f, onClickLabel = "快速记录")
+                .pressable(onClick = onQuickRecord, pressedScale = 0.96f, onClickLabel = quickLabel)
                 .semantics { contentDescription = dev.haniya.relief.i18n.I18n.tr(quickLabel) },
             contentAlignment = Alignment.Center,
-        ) { HIcon("plus", size = 26.dp, tint = Color.White) }
+        ) { HIcon(quickIcon, size = 26.dp, tint = Color.White) }
     }
 }

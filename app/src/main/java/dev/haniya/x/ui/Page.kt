@@ -43,17 +43,19 @@ object Space {
 fun PageHeader(
     title: String,
     caption: String? = null,
-    onBack: (() -> Unit)? = { Nav.back() },
+    onBack: (() -> Unit)? = Nav.defaultBack,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     val c = ReliefTheme.colors
+    // A tab's top-level page has no back button: the bottom bar is the way around.
+    val back = if (onBack === Nav.defaultBack && Nav.isTabRoot) null else onBack
     Row(
         Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.statusBars)
             .padding(horizontal = Space.gutter, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        if (onBack != null) IconCircleButton("chevL", contentDescription = "返回", onClick = onBack)
+        if (back != null) IconCircleButton("chevL", contentDescription = "返回", onClick = back)
         Column(Modifier.weight(1f)) {
             Text(title, style = ReliefTheme.type.pageTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (caption != null) Text(caption, style = ReliefTheme.type.caption, color = c.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -70,7 +72,7 @@ fun PageHeader(
 fun Page(
     title: String,
     caption: String? = null,
-    onBack: (() -> Unit)? = { Nav.back() },
+    onBack: (() -> Unit)? = Nav.defaultBack,
     actions: @Composable RowScope.() -> Unit = {},
     scroll: Boolean = true,
     contentPadding: PaddingValues = PaddingValues(horizontal = Space.gutter),
@@ -89,9 +91,13 @@ fun Page(
             ) {
                 Spacer(Modifier.height(4.dp))
                 content()
-                Spacer(Modifier.windowInsetsPadding(WindowInsets.navigationBars).height(28.dp))
+                Spacer(Modifier.windowInsetsPadding(WindowInsets.navigationBars).height(bottomGap()))
             }
         }
         overlay()
     }
 }
+
+/** Space under scrolling content: clears the floating bottom bar on tab pages. */
+@Composable
+fun bottomGap() = if (Nav.isTabRoot) dev.haniya.relief.component.navigationContentBottomPadding() else 28.dp

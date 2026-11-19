@@ -47,12 +47,16 @@ fun ProjectsModule(
     modifier: Modifier,
     onOpen: (Project) -> Unit,
     onNew: () -> Unit,
+    limit: Int = PROJECTS_SHOWN,
+    title: String = "最近项目",
+    /** When set, overflow links to the full list instead of expanding in place. */
+    onAll: (() -> Unit)? = null,
 ) {
     val c = ReliefTheme.colors
     var expanded by rememberSaveable { mutableStateOf(false) }
     GlassCard(modifier) {
         CardHeader(
-            "最近项目", icon = "folder",
+            title, icon = "folder",
             caption = if (projects.isEmpty()) null else "${projects.size} 个项目",
             trailing = { SmallRoundButton("plus", "新建项目", onNew) },
         )
@@ -60,7 +64,7 @@ fun ProjectsModule(
             ModuleEmpty("还没有项目", "新建一个目录，或从 Git 克隆仓库到 /root/projects", "新建项目", onNew)
         } else {
             Spacer(Modifier.height(6.dp))
-            val shown = if (expanded) projects else projects.take(PROJECTS_SHOWN)
+            val shown = if (expanded) projects else projects.take(limit)
             shown.forEachIndexed { i, p ->
                 if (i > 0) Divider()
                 ItemRow(
@@ -72,9 +76,10 @@ fun ProjectsModule(
                     },
                 )
             }
-            if (projects.size > PROJECTS_SHOWN) {
+            if (projects.size > limit) {
                 Divider()
-                TextLink(
+                if (onAll != null) TextLink("全部项目", onAll, modifier = Modifier.padding(top = 6.dp), icon = "chevR")
+                else TextLink(
                     if (expanded) "收起" else "显示全部 ${projects.size} 个", { expanded = !expanded },
                     modifier = Modifier.padding(top = 6.dp), icon = if (expanded) "chevU" else "chevD",
                 )
@@ -85,7 +90,13 @@ fun ProjectsModule(
 
 /** 进行中的任务: running first, then tasks from the last 24 h. */
 @Composable
-fun TasksModule(tasks: List<TaskRecord>, modifier: Modifier, onOpen: (String) -> Unit, onMore: (String) -> Unit) {
+fun TasksModule(
+    tasks: List<TaskRecord>,
+    modifier: Modifier,
+    onOpen: (String) -> Unit,
+    onMore: (String) -> Unit,
+    limit: Int = TASKS_SHOWN,
+) {
     val c = ReliefTheme.colors
     val now = rememberNow(30_000)
     val list = remember(tasks, now) { TaskList.forHome(tasks, now) }
@@ -104,7 +115,7 @@ fun TasksModule(tasks: List<TaskRecord>, modifier: Modifier, onOpen: (String) ->
             ModuleEmpty("没有进行中的任务", "在终端或智能体里开始的工作会出现在这里", "打开终端") { Nav.go(Route.Terminal(null)) }
         } else {
             Spacer(Modifier.height(6.dp))
-            val shown = if (expanded) list else list.take(TASKS_SHOWN)
+            val shown = if (expanded) list else list.take(limit)
             shown.forEachIndexed { i, t ->
                 if (i > 0) Divider()
                 val status = tr(TaskList.statusLabel(t))
@@ -118,7 +129,7 @@ fun TasksModule(tasks: List<TaskRecord>, modifier: Modifier, onOpen: (String) ->
                     trailing = { SmallRoundButton("list", "更多操作", { onMore(t.id) }) },
                 )
             }
-            if (list.size > TASKS_SHOWN) {
+            if (list.size > limit) {
                 Divider()
                 TextLink(
                     if (expanded) "收起" else "显示全部 ${list.size} 个", { expanded = !expanded },

@@ -14,5 +14,6 @@
 
 - terminal-emulator `TerminalEmulator`: answers OSC 4/10/11 colour queries from the current scheme (TUIs detect light/dark).
 - terminal-view `TerminalView`: IME input connection that lets Chinese/Japanese/Korean keyboards compose and commit text; composition (preedit) drawn at the cursor; scrollback search highlight and programmatic top-row control; selection mode tweaks.
+- terminal-view `TerminalView.onKeyDown`: Back is no longer swallowed when the view has no live session (ended tasks).
 - terminal-view `TerminalRenderer`: selection / search highlight painted with theme colours instead of inverting; dim text blended toward the background; preedit rendering; glyphs narrower than their cells (CJK) are centred instead of stretched horizontally.
 - terminal-view `TextSelectionCursorController`, `strings.xml`: Chinese labels and selection behaviour.

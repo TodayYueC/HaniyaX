@@ -92,8 +92,10 @@ fun HomeScreen() {
         val pid = HomeLayoutOps.pluginIdOf(id)
         if (pid != null) pid in pluginById else id in HomeLayoutOps.BUILTIN
     }
-    val visible = HomeLayoutOps.visible(layout, available)
-    val hidden = HomeLayoutOps.hidden(layout, available)
+    // Services have their own tab now; the home page keeps tasks, recent projects and cards.
+    val onHome: (String) -> Boolean = { id -> id != HomeLayoutOps.SERVICES && available(id) }
+    val visible = HomeLayoutOps.visible(layout, onHome)
+    val hidden = HomeLayoutOps.hidden(layout, onHome)
     val agentName: (String) -> String = { id -> App.agents.agents.firstOrNull { it.id == id }?.name ?: id }
     val enterEdit = {
         if (!editing) {
@@ -117,13 +119,6 @@ fun HomeScreen() {
                 editing = editing,
                 onToggleEdit = { editing = !editing },
             )
-            EntryTiles(
-                shells = tasks.count { it.status == TaskStatus.Running && it.kind == TaskKind.Shell },
-                installedAgents = agentStatus.values.count { it is AgentStatus.Installed },
-                agentBusy = agentStatus.values.any { it is AgentStatus.Busy },
-                dshOnline = services.any { (it.def.owner == "dsh" || it.def.name == "dsh") && it.status == ServiceStatus.Running },
-            )
-
             visible.forEach { m ->
                 key(m.id) {
                     ModuleSlot(
@@ -131,9 +126,9 @@ fun HomeScreen() {
                         builtin = m.id in HomeLayoutOps.BUILTIN,
                         module = m,
                         editing = editing,
-                        canUp = HomeLayoutOps.canMove(layout, m.id, -1, available),
-                        canDown = HomeLayoutOps.canMove(layout, m.id, +1, available),
-                        onMove = { d -> HomeStore.move(m.id, d, available) },
+                        canUp = HomeLayoutOps.canMove(layout, m.id, -1, onHome),
+                        canDown = HomeLayoutOps.canMove(layout, m.id, +1, onHome),
+                        onMove = { d -> HomeStore.move(m.id, d, onHome) },
                         onPin = { HomeStore.setPinned(m.id, !m.pinned) },
                         onHide = { HomeStore.setHidden(m.id, true) },
                         onLongPress = enterEdit,
@@ -143,13 +138,15 @@ fun HomeScreen() {
                                 projects, agentName, Modifier,
                                 onOpen = { projectPath = it.path },
                                 onNew = { newProject = true },
+                                limit = HOME_PROJECTS,
+                                onAll = { Nav.selectTab(Route.Projects) },
                             )
                             HomeLayoutOps.TASKS -> TasksModule(
                                 tasks, Modifier,
                                 onOpen = { HomeActions.openTask(it) },
                                 onMore = { taskId = it },
+                                limit = HOME_TASKS,
                             )
-                            HomeLayoutOps.SERVICES -> ServicesModule(services, serviceErrors, Modifier)
                             else -> HomeLayoutOps.pluginIdOf(m.id)?.let { App.plugins.Card(it, Modifier.fillMaxWidth()) }
                         }
                     }
@@ -170,7 +167,7 @@ fun HomeScreen() {
                     modifier = Modifier.align(Alignment.CenterHorizontally),
                 )
             }
-            Spacer(Modifier.windowInsetsPadding(WindowInsets.navigationBars).height(28.dp))
+            Spacer(Modifier.windowInsetsPadding(WindowInsets.navigationBars).height(dev.haniya.x.ui.bottomGap()))
         }
 
         val project: Project? = projectPath?.let { path ->
@@ -190,6 +187,9 @@ fun HomeScreen() {
         AgentLaunchSheet(launch) { launch = null }
     }
 }
+
+private const val HOME_PROJECTS = 3
+private const val HOME_TASKS = 3
 
 private fun moduleTitle(id: String, plugins: Map<String, PluginSummary>): String = when (id) {
     HomeLayoutOps.PROJECTS -> "最近项目"
@@ -211,9 +211,7 @@ private fun HomeHeader(runningTasks: Int, onlineServices: Int, editing: Boolean,
         ) {
             Text(Fmt.greeting(hour), style = ReliefTheme.type.greeting, maxLines = 1, modifier = Modifier.weight(1f))
             if (editing) GlassButton("完成", onToggleEdit, size = ButtonSize.Small, icon = "check")
-            else GlassButton("编辑", onToggleEdit, size = ButtonSize.Small, icon = "edit")
-            IconCircleButton("folder", "文件", { Nav.go(Route.Files()) })
-            IconCircleButton("sliders", "设置", { Nav.go(Route.Settings) })
+            else IconCircleButton("edit", "编辑首页", onToggleEdit)
         }
         // Full width under the greeting so it never wraps around the buttons.
         Text(
@@ -221,51 +219,6 @@ private fun HomeHeader(runningTasks: Int, onlineServices: Int, editing: Boolean,
             style = ReliefTheme.type.caption, color = c.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = 2.dp),
         )
-    }
-}
-
-@Composable
-private fun EntryTiles(shells: Int, installedAgents: Int, agentBusy: Boolean, dshOnline: Boolean) {
-    Row(
-        Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        EntryTile(
-            "terminal", "终端", if (shells > 0) "$shells 个会话" else "新建会话",
-            Modifier.weight(1f).fillMaxHeight(),
-        ) { Nav.go(Route.Terminal(null)) }
-        EntryTile(
-            "bot", "智能体",
-            when {
-                agentBusy -> "正在安装"
-                installedAgents > 0 -> "$installedAgents 个已安装"
-                else -> "按需安装"
-            },
-            Modifier.weight(1f).fillMaxHeight(),
-        ) { Nav.go(Route.Agents) }
-        EntryTile(
-            "whale", "DeepSeek Harness", if (dshOnline) "服务在线" else "内嵌工作页",
-            Modifier.weight(1f).fillMaxHeight(), translateLabel = false,
-        ) { Nav.go(Route.Dsh) }
-    }
-}
-
-@Composable
-private fun EntryTile(
-    icon: String,
-    label: String,
-    caption: String,
-    modifier: Modifier,
-    translateLabel: Boolean = true,
-    onClick: () -> Unit,
-) {
-    val c = ReliefTheme.colors
-    GlassCard(modifier, onClick = onClick, padding = PaddingValues(horizontal = 12.dp, vertical = 14.dp)) {
-        IconTile(icon, size = 40.dp)
-        Spacer(Modifier.height(12.dp))
-        Text(label, style = ReliefTheme.type.buttonSmall, color = c.ink, maxLines = 2, translate = translateLabel)
-        Spacer(Modifier.weight(1f).height(4.dp))
-        Text(caption, style = ReliefTheme.type.caption, color = c.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

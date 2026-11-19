@@ -97,6 +97,7 @@ fun AgentsScreen() {
             AgentLaunchSheet(launch) { launch = null }
         },
     ) {
+        DshEntry()
         App.agents.agents.forEach { info ->
             val adapter = Adapters.find(info.id)
             val s = status[info.id]
@@ -456,4 +457,22 @@ private fun LoginCard() {
 internal fun copyText(context: Context, text: String) {
     val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager ?: return
     cm.setPrimaryClip(ClipData.newPlainText("HaniyaX", text))
+}
+
+/** DeepSeek Harness lives with the agents: one row that opens its embedded workspace. */
+@Composable
+private fun DshEntry() {
+    val c = ReliefTheme.colors
+    val services by App.services.services.collectAsState()
+    val online = services.any { (it.def.owner == "dsh" || it.def.name == "dsh") && it.status == dev.haniya.x.services.ServiceStatus.Running }
+    dev.haniya.relief.component.GlassCard(onClick = { dev.haniya.x.ui.Nav.go(dev.haniya.x.ui.Route.Dsh) }) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            IconTile("whale", size = 44.dp)
+            Column(Modifier.weight(1f)) {
+                Text("DeepSeek Harness", style = ReliefTheme.type.title, maxLines = 1, translate = false)
+                Text(if (online) "服务在线" else "DeepSeek 的开源智能体工作台", style = ReliefTheme.type.caption, color = c.ink2, maxLines = 1)
+            }
+            dev.haniya.relief.icon.HIcon("chevR", size = 18.dp, tint = c.ink2)
+        }
+    }
 }

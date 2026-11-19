@@ -152,7 +152,7 @@ Can't connect right now
 Update to {0}
 Updating only replaces program files; sessions, settings and sign-in are kept. Compatibility with the mobile front end is checked first, and the service restarts afterwards.
 New version {0} available
-Service
+Services
 Service log
 Not connected
 Not bundled
@@ -1120,3 +1120,6 @@ Open link
 Copy link
 Link copied
 Copy
+Home
+All projects
+Edit home

@@ -8,7 +8,7 @@ The app language follows the system by default (Chinese on Chinese systems, Engl
 
 ## Features
 
-- **Continue working** – the home screen shows recent projects, running tasks and background services; any project or task can be the default entry when the app opens.
+- **Continue working** – a bottom bar switches between Home, Projects, Agents, Services and Settings, and the round key opens the terminal. Home shows tasks, recent projects and your cards; any project or task can be the default entry when the app opens.
 - **Terminal** – multiple tabs, CJK input method support, a compose bar for long text, paste preview, selection copy, scrollback search, customisable extra keys and fullscreen. Leaving a page, closing a tab and ending a task are separate actions; tasks killed by Android are shown as such and can be resumed.
 - **Agents on demand** – install, update, start and resume Claude Code, Codex, Antigravity and OpenCode in any project. Updates are your call; settings, sign-in and history are kept.
 - **Providers** – per-agent API endpoint, key and model management based on CC Switch's key-field model, with automatic snapshots and one-tap restore.

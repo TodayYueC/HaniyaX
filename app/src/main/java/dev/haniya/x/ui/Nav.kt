@@ -18,6 +18,10 @@ sealed interface Route {
     data class Files(val path: String? = null, val pickProject: Boolean = false) : Route
     /** Service detail: status, address, logs, start/stop. */
     data class Service(val name: String) : Route
+    /** All projects (bottom-nav tab). */
+    data object Projects : Route
+    /** All background services (bottom-nav tab). */
+    data object Services : Route
 }
 
 /** Minimal back stack. Call from the main thread only. */
@@ -28,4 +32,24 @@ object Nav {
     /** Replaces the whole stack with Home + [route]. */
     fun reset(route: Route = Route.Home) { stack.clear(); stack.add(Route.Home); if (route != Route.Home) stack.add(route) }
     fun back(): Boolean = if (stack.size > 1) { stack.removeAt(stack.lastIndex); true } else false
+
+    /** Bottom-navigation destinations, in bar order. */
+    val tabs: List<Route> = listOf(Route.Home, Route.Projects, Route.Agents, Route.Services, Route.Settings)
+
+    /** Shows [tab] as a top-level page: Home alone, or Home + tab (so Back returns to Home). */
+    fun selectTab(tab: Route) {
+        stack.clear(); stack.add(Route.Home)
+        if (tab != Route.Home) stack.add(tab)
+    }
+
+    /** The current page is a tab's top level: the bottom bar shows and pages hide their back button. */
+    val isTabRoot: Boolean
+        get() = when (stack.size) {
+            1 -> stack[0] == Route.Home
+            2 -> stack[0] == Route.Home && stack[1] in tabs
+            else -> false
+        }
+
+    /** Default back action for page headers; a tab root ignores it (see [PageHeader]). */
+    val defaultBack: () -> Unit = { back() }
 }
