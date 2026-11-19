@@ -1150,4 +1150,3 @@ New Shell
 Add cards
 Tap "Add" to put a card on Home; reorder it above
 All cards are already on Home
-MIT · agent icons

@@ -134,7 +134,7 @@ object Adapters {
      * The Bash sandbox is off by default and falls back to unsandboxed commands when unavailable → no flag needed.
      */
     val claude = AgentAdapter(
-        info = AgentInfo("claude", "Claude Code", "Anthropic", "brand:claude"),
+        info = AgentInfo("claude", "Claude Code", "Anthropic", "claude"),
         binary = "claude",
         latest = LatestSource.PlainText("https://downloads.claude.ai/claude-code-releases/latest"),
         verifiedMajor = 2,
@@ -156,7 +156,7 @@ object Adapters {
      * `-c check_for_update_on_startup=false`: updates are managed here (documented for centrally managed installs).
      */
     val codex = AgentAdapter(
-        info = AgentInfo("codex", "Codex", "OpenAI", "brand:codex"),
+        info = AgentInfo("codex", "Codex", "OpenAI", "codex"),
         binary = "codex",
         latest = LatestSource.GithubLatestRedirect("https://github.com/openai/codex/releases/latest", "rust-v"),
         verifiedMajor = 0,
@@ -181,7 +181,7 @@ object Adapters {
      * No OS sandbox unless `--sandbox` is passed (off by default). Global rules: ~/.gemini/AGENTS.md.
      */
     val antigravity = AgentAdapter(
-        info = AgentInfo("antigravity", "Antigravity", "Google", "brand:antigravity"),
+        info = AgentInfo("antigravity", "Antigravity", "Google", "antigravity"),
         binary = "agy",
         latest = LatestSource.JsonField(
             "https://antigravity-cli-auto-updater-974169037036.us-central1.run.app/manifests/linux_arm64.json", "version",
@@ -207,7 +207,7 @@ object Adapters {
      * service, which would otherwise outlive the tab and keep the proot session alive. OpenCode has no OS sandbox.
      */
     val opencode = AgentAdapter(
-        info = AgentInfo("opencode", "OpenCode", "Anomaly", "brand:opencode"),
+        info = AgentInfo("opencode", "OpenCode", "Anomaly", "opencode"),
         binary = "opencode",
         latest = LatestSource.JsonField("https://opencode.ai/update/api/latest/cli/npm", "version"),
         verifiedMajor = 2,

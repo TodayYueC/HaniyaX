@@ -45,6 +45,11 @@ object ReliefIcons {
         "zap" to "M13 3 5 13.5h6L10 21l8-10.5h-6z",
         "power" to "M12 3.5v8M7 6.5a7 7 0 1 0 10 0",
         "whale" to "M3 13.4C3 9.7 6.5 7.3 10.7 7.3C14.9 7.3 17.7 9.5 18.4 12.5C19 15.4 17.4 18.9 12.4 18.9L8.8 18.9C5.4 18.9 3 16.7 3 13.4M18.3 12.3C19.6 11.6 20.6 10.3 21 8.6C21.6 10.1 21.8 11.5 21.1 12.7C20.5 13.7 19.5 14.2 18.6 14.3M7.6 12.3v.1M5.4 15.3Q7.1 16.7 9 15.8M10.3 5.7Q10 4.6 9.1 3.9M11.2 5.7Q11.6 4.5 12.6 3.9",
+        // Coding agents, drawn after their product logos in the same pen style.
+        "claude" to "M4.2 7.1Q12 6.8 19.8 7.2Q20.1 11.1 19.9 15.1Q12 15.3 4.1 15Q3.9 11 4.2 7.1M4.1 11.1Q3 10.9 2 11.2Q1.8 12.1 2.1 13.1Q3.1 13.2 4.1 12.9M19.9 11.1Q21 10.9 22 11.2Q22.2 12.1 21.9 13.1Q20.9 13.2 19.9 12.9M6.6 15.1L6.7 19.1M9.3 15.1L9.2 19.1M14.7 15.1L14.8 19.1M17.4 15.1L17.3 19.1M8.4 9.5L8.5 11.2M15.6 9.5L15.5 11.2",
+        "codex" to "M7.2 18.7C4.6 18.8 3 16.8 3.2 14.6C3.3 12.6 4.9 11.3 6.5 11.3C6.4 8 9 5.6 12 5.7C14.6 5.6 16.6 7.3 17.2 9.5C19.6 9.6 21.1 11.6 21 13.9C21.1 16.6 19 18.8 16.4 18.7Q11.8 18.9 7.2 18.7M8.6 11.9L10.9 13.7L8.7 15.6M12.6 15.7Q14.1 15.5 15.7 15.7",
+        "antigravity" to "M2.8 20.3C6.6 17 7.4 3.6 12 3.5C16.6 3.6 17.4 17 21.2 20.3C19.8 21.2 18.6 20.9 17.6 20C15.3 17.8 15.2 12.4 12 12.4C8.8 12.4 8.7 17.8 6.4 20C5.4 20.9 4.2 21.2 2.8 20.3",
+        "opencode" to "M5.1 3.2Q12 2.9 18.9 3.1Q19.1 12 18.9 20.9Q12 21.1 5.1 20.8Q4.9 12 5.1 3.2M9.1 7.1Q12 6.9 14.9 7.1Q15.1 12 14.9 16.9Q12 17.1 9.1 16.9Q8.9 12 9.1 7.1",
         "warn" to "M12 4 3 19.5h18zM12 10v4.5M12 17v.1",
         "home" to "M3.2 10.6C6.1 8.2 9.2 5.4 12 3.3C15 5.7 18.1 8.2 20.8 10.8M4.6 10.1C4.4 13.6 4.8 17.2 4.5 20.4C6 20.7 7.5 20.5 9.1 20.6L9.2 14.8C11 14.6 12.8 14.9 14.7 14.8L14.9 20.6C16.4 20.5 18 20.7 19.5 20.4C19.7 16.9 19.4 13.7 19.6 10.1",
         "timer" to "M9.1 2.5Q12 2.2 14.9 2.6M12.1 2.7L11.9 5.3M12.2 6C7.9 5.8 4.4 9.1 4.6 13.6C4.4 18.1 7.9 21.2 12.2 20.9C16.7 21 20.1 17.8 19.8 13.3C19.6 9.1 16.6 6 12.2 6M12 9.5Q11.8 11.7 12.1 14L15 15.8M17.6 5.5L19.1 7.1",
@@ -227,14 +232,6 @@ fun HIcon(
     contentDescription: String? = null,
     brush: Brush? = null,
 ) {
-    BrandIcons.get(name)?.let { b ->
-        // Product logos keep their own colours; monochrome ones take the ink colour so they work in dark themes.
-        Image(
-            androidx.compose.ui.res.painterResource(b.res), contentDescription, modifier.size(size),
-            colorFilter = if (b.monochrome) androidx.compose.ui.graphics.ColorFilter.tint(dev.haniya.relief.theme.ReliefTheme.colors.ink) else null,
-        )
-        return
-    }
     if (brush == null) {
         Icon(ReliefIcons.get(name), contentDescription, modifier.size(size), tint = tint)
     } else {
@@ -252,18 +249,3 @@ fun HIcon(
     }
 }
 
-/**
- * Raster product logos the app registers at start-up ("brand:<name>"), e.g. the coding agents' own icons.
- * HIcon / IconTile render them unchanged instead of a Relief line icon.
- */
-object BrandIcons {
-    class Brand(@androidx.annotation.DrawableRes val res: Int, val monochrome: Boolean)
-    private val map = HashMap<String, Brand>()
-    const val PREFIX = "brand:"
-
-    fun register(name: String, @androidx.annotation.DrawableRes res: Int, monochrome: Boolean = false) {
-        map[name] = Brand(res, monochrome)
-    }
-
-    fun get(icon: String): Brand? = if (icon.startsWith(PREFIX)) map[icon.removePrefix(PREFIX)] else null
-}
