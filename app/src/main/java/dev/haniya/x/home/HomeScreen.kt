@@ -203,22 +203,24 @@ private fun HomeHeader(runningTasks: Int, onlineServices: Int, editing: Boolean,
     val c = ReliefTheme.colors
     val now = rememberNow(60_000)
     val hour = remember(now) { LocalTime.now().hour }
-    Row(
-        Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 2.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(Fmt.greeting(hour), style = ReliefTheme.type.greeting, maxLines = 1)
-            Text(
-                Fmt.workspaceSummary(runningTasks, onlineServices),
-                style = ReliefTheme.type.caption, color = c.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis,
-            )
+    Column(Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 2.dp)) {
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(Fmt.greeting(hour), style = ReliefTheme.type.greeting, maxLines = 1, modifier = Modifier.weight(1f))
+            if (editing) GlassButton("完成", onToggleEdit, size = ButtonSize.Small, icon = "check")
+            else GlassButton("编辑", onToggleEdit, size = ButtonSize.Small, icon = "edit")
+            IconCircleButton("folder", "文件", { Nav.go(Route.Files()) })
+            IconCircleButton("sliders", "设置", { Nav.go(Route.Settings) })
         }
-        if (editing) GlassButton("完成", onToggleEdit, size = ButtonSize.Small, icon = "check")
-        else GlassButton("编辑", onToggleEdit, size = ButtonSize.Small, icon = "edit")
-        IconCircleButton("folder", "文件", { Nav.go(Route.Files()) })
-        IconCircleButton("sliders", "设置", { Nav.go(Route.Settings) })
+        // Full width under the greeting so it never wraps around the buttons.
+        Text(
+            Fmt.workspaceSummary(runningTasks, onlineServices),
+            style = ReliefTheme.type.caption, color = c.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 2.dp),
+        )
     }
 }
 

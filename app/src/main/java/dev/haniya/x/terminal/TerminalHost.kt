@@ -423,7 +423,7 @@ fun TerminalHost(
                 v.setTextSize(
                     TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, fontSp.toFloat(), ctx.resources.displayMetrics).roundToInt(),
                 )
-                v.setTypeface(Typeface.MONOSPACE)
+                v.setTypeface(TerminalFonts.typeface(ctx))
                 v.setBackgroundColor(background)
                 v.isVerticalScrollBarEnabled = true
                 controller.attachView(v)
