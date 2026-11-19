@@ -22,8 +22,8 @@ android {
         // Kept at 28 (like Termux) so binaries inside the app data dir may be executed (W^X on API 29+).
         @Suppress("ExpiredTargetSdkVersion")
         targetSdk = 28
-        versionCode = 5
-        versionName = "0.1.4"
+        versionCode = 6
+        versionName = "0.1.5"
         ndk { abiFilters += listOf("arm64-v8a") }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

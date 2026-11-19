@@ -54,6 +54,11 @@ import kotlin.math.roundToInt
  * 底部凸面弹层：左右下各内缩 8dp、圆角 38、最高 88%；自底部滑入（柔和弹簧）+ 背景压暗。
  * 放在屏幕根部的 Box 中，覆盖在内容之上。
  */
+/** How many sheets are showing; app chrome drawn above pages (e.g. a floating tab bar) hides while > 0. */
+object SheetTracker {
+    var open by androidx.compose.runtime.mutableIntStateOf(0)
+}
+
 @Composable
 fun GlassSheet(
     visible: Boolean,
@@ -65,7 +70,13 @@ fun GlassSheet(
 ) {
     val c = ReliefTheme.colors
     val reduced = LocalReducedMotion.current
-    if (visible) BackHandler(onBack = onBack ?: onDismiss)
+    if (visible) {
+        BackHandler(onBack = onBack ?: onDismiss)
+        androidx.compose.runtime.DisposableEffect(Unit) {
+            SheetTracker.open++
+            onDispose { SheetTracker.open-- }
+        }
+    }
     Box(Modifier.fillMaxSize()) {
         AnimatedVisibility(
             visible = visible,

@@ -124,7 +124,11 @@ private fun Root() {
             }
         }
     }
-    if (Nav.isTabRoot) MainTabBar(Modifier.align(androidx.compose.ui.Alignment.BottomCenter))
+    androidx.compose.animation.AnimatedVisibility(
+        visible = Nav.isTabRoot && dev.haniya.relief.component.SheetTracker.open == 0,
+        modifier = Modifier.align(androidx.compose.ui.Alignment.BottomCenter),
+        enter = fadeIn(), exit = fadeOut(),
+    ) { MainTabBar(Modifier) }
     }
 }
 
