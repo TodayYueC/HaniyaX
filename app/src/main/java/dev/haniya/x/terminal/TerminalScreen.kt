@@ -117,6 +117,11 @@ fun TerminalScreen(taskId: String?) {
     var searchOpen by remember { mutableStateOf(false) }
     var fullscreen by remember { mutableStateOf(false) }
     var pastePending by remember { mutableStateOf<String?>(null) }
+    var linkTapped by remember { mutableStateOf<String?>(null) }
+    DisposableEffect(controller) {
+        controller.onLinkTap = { url -> controller.hideIme(); linkTapped = url }
+        onDispose { controller.onLinkTap = null }
+    }
     var tabMenuFor by remember { mutableStateOf<TaskRecord?>(null) }
     var confirmEnd by remember { mutableStateOf<TaskRecord?>(null) }
     var newTabOpen by remember { mutableStateOf(false) }
@@ -289,6 +294,7 @@ fun TerminalScreen(taskId: String?) {
         }
 
         // ---- sheets ----
+        LinkSheet(url = linkTapped, onDismiss = { linkTapped = null })
         PastePreviewSheet(
             text = pastePending,
             onPaste = { text -> controller.paste(text); pastePending = null },
@@ -539,6 +545,38 @@ private fun SearchBar(controller: TerminalController, onClose: () -> Unit) {
 }
 
 // ---------------------------------------------------------------- sheets
+
+/** Tapped a link in the terminal: open it in the browser or copy it (sign-in flows print long URLs). */
+@Composable
+private fun LinkSheet(url: String?, onDismiss: () -> Unit) {
+    val c = ReliefTheme.colors
+    val context = LocalContext.current
+    val toast = LocalToast.current
+    dev.haniya.relief.component.GlassSheet(visible = url != null, onDismiss = onDismiss, title = "打开链接") {
+        val u = url ?: return@GlassSheet
+        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                Modifier.fillMaxWidth().heightIn(max = 200.dp).insetSurface(RoundedCornerShape(Radii.sm))
+                    .verticalScroll(rememberScrollState()).padding(12.dp),
+            ) {
+                androidx.compose.foundation.text.selection.SelectionContainer {
+                    Text(u, style = ReliefTheme.type.caption.copy(fontFamily = FontFamily.Monospace), color = c.ink, translate = false)
+                }
+            }
+            Row(Modifier.fillMaxWidth().padding(bottom = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                PrimaryButton("在浏览器中打开", icon = "globe", onClick = {
+                    if (!dev.haniya.x.home.openUrl(context, u)) toast.show("没有可以打开链接的应用", icon = "info")
+                    onDismiss()
+                })
+                GlassButton("复制", icon = "copy", onClick = {
+                    dev.haniya.x.home.copyToClipboard(context, u, "URL")
+                    toast.show("已复制链接", icon = "check")
+                    onDismiss()
+                })
+            }
+        }
+    }
+}
 
 @Composable
 private fun PastePreviewSheet(text: String?, onPaste: (String) -> Unit, onDismiss: () -> Unit) {

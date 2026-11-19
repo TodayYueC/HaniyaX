@@ -1116,3 +1116,7 @@ Antigravity can't run in this environment (agy --version printed nothing). {0}
 agy --version didn't return a version.
 Language
 Chinese on Chinese systems, English otherwise
+Open link
+Copy link
+Link copied
+Copy

@@ -61,6 +61,21 @@ class TerminalController(private val context: Context) {
     /** Tap on the terminal text (not on a TUI with mouse reporting). */
     var onTerminalTap: () -> Unit = { showIme() }
 
+    /** A tap landed on a web link; the screen asks whether to open or copy it. */
+    var onLinkTap: ((String) -> Unit)? = null
+
+    /** URL drawn under [e] (joined across wrapped rows), or null. */
+    fun linkAt(e: MotionEvent): String? {
+        val v = view ?: return null
+        val em = emulator ?: return null
+        val (col, row) = v.getColumnAndRow(e, true).let { it[0] to it[1] }
+        val first = maxOf(-em.screen.activeTranscriptRows, row - 24)
+        val last = minOf(em.mRows - 1, row + 24)
+        if (row < first || row > last) return null
+        val rows = (first..last).map { rowAt(em, it) }
+        return TerminalLinks.urlAt(rows, row - first, col, em.mColumns)
+    }
+
     val session: TerminalSession? get() = view?.currentSession
     val emulator: TerminalEmulator? get() = view?.mEmulator ?: session?.emulator
 
@@ -360,7 +375,8 @@ class TerminalController(private val context: Context) {
         }
 
         override fun onSingleTapUp(e: MotionEvent?) {
-            onTerminalTap()
+            val link = onLinkTap?.let { e?.let { ev -> runCatching { linkAt(ev) }.getOrNull() } }
+            if (link != null) onLinkTap?.invoke(link) else onTerminalTap()
         }
 
         override fun shouldBackButtonBeMappedToEscape(): Boolean = false
