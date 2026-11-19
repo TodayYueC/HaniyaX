@@ -225,7 +225,8 @@ private fun ActionsRow(
             else -> GlassButton("检查中…", onClick = {}, size = ButtonSize.Small, enabled = false)
         }
         Spacer(Modifier.weight(1f))
-        TextLink("服务商", onClick = { Nav.go(Route.Providers(info.id)) })
+        // Antigravity manages its sign-in and model provider itself (~/.gemini/antigravity-cli/settings.json).
+        if (info.id != "antigravity") TextLink("服务商", onClick = { Nav.go(Route.Providers(info.id)) })
     }
 }
 
