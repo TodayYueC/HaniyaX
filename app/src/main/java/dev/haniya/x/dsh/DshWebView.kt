@@ -107,6 +107,15 @@ object DshWebView {
         w.evaluateJavascript(script, null)
     }
 
+    /** (Re)authenticates with [token] and loads the app; used on first show and by 重新加载. */
+    fun load(token: String) {
+        val w = web ?: return
+        authedFor = "${DshManager.baseUrl}#$token"
+        w.stopLoading()
+        // GET /?token= mints the auth cookie and redirects to the app.
+        w.loadUrl("${DshManager.baseUrl}/?token=${android.net.Uri.encode(token)}")
+    }
+
     /** Ensures the document-start script is registered after the WebView was created. */
     fun installThemeIfNeeded() {
         val s = themeScript

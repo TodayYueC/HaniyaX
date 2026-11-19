@@ -243,6 +243,23 @@ private fun WorkPage(versions: DshVersions) {
         }
     }
 
+    // A request made while DSH is still warming up can hang with no timeout, leaving a blank page:
+    // reload once automatically after 15 s, then offer 重新加载.
+    var autoReloaded by remember { mutableStateOf(false) }
+    var stuck by remember { mutableStateOf(false) }
+    LaunchedEffect(conn, loading) {
+        val k = conn
+        if (k !is Conn.Ready || !loading) { stuck = false; return@LaunchedEffect }
+        delay(15_000)
+        if (!loading) return@LaunchedEffect
+        if (!autoReloaded) { autoReloaded = true; DshWebView.load(k.token) } else stuck = true
+    }
+    fun reloadPage() {
+        val k = conn as? Conn.Ready ?: return
+        stuck = false
+        DshWebView.load(k.token)
+    }
+
     BackHandler {
         val w = DshWebView.current()
         if (w != null && w.canGoBack() && conn is Conn.Ready) w.goBack() else Nav.back()
@@ -286,17 +303,23 @@ private fun WorkPage(versions: DshVersions) {
                     }
                 }
                 is Conn.Ready -> if (activity != null) {
+                    if (stuck) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = Space.gutter, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Text("页面加载较慢", style = ReliefTheme.type.caption, color = c.ink2, modifier = Modifier.weight(1f))
+                            GlassButton("重新加载", onClick = { reloadPage() }, size = ButtonSize.Small, icon = "refresh")
+                        }
+                    }
                     AndroidView(
                         modifier = Modifier.weight(1f).fillMaxWidth().imePadding().windowInsetsPadding(WindowInsets.navigationBars),
                         factory = {
                             DshWebView.obtain(activity).also { w ->
                                 DshWebView.installThemeIfNeeded()
                                 val authKey = "${DshManager.baseUrl}#${k.token}"
-                                if (DshWebView.authedFor != authKey || w.url == null) {
-                                    DshWebView.authedFor = authKey
-                                    // GET /?token= mints the auth cookie and redirects to the app.
-                                    w.loadUrl("${DshManager.baseUrl}/?token=${Uri.encode(k.token)}")
-                                }
+                                if (DshWebView.authedFor != authKey || w.url == null) DshWebView.load(k.token)
                             }
                         },
                     )
@@ -309,13 +332,14 @@ private fun WorkPage(versions: DshVersions) {
             versions = versions,
             onDismiss = { menuOpen = false },
             onSandbox = { menuOpen = false; sandboxOpen = true },
+            onReload = { menuOpen = false; reloadPage() },
         )
         SandboxSheet(visible = sandboxOpen, onDismiss = { sandboxOpen = false })
     }
 }
 
 @Composable
-private fun DshMenuSheet(visible: Boolean, versions: DshVersions, onDismiss: () -> Unit, onSandbox: () -> Unit) {
+private fun DshMenuSheet(visible: Boolean, versions: DshVersions, onDismiss: () -> Unit, onSandbox: () -> Unit, onReload: () -> Unit) {
     val c = ReliefTheme.colors
     GlassSheet(visible = visible, onDismiss = onDismiss, title = "DeepSeek Harness") {
         Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 16.dp)) {
@@ -337,7 +361,9 @@ private fun DshMenuSheet(visible: Boolean, versions: DshVersions, onDismiss: () 
             }
             Spacer(Modifier.height(16.dp))
             Text("服务", style = ReliefTheme.type.label, color = c.ink2)
-            ListRow("重启服务", icon = "refresh", subtitle = "配置或服务商变更后需要重启才会生效", onClick = { DshManager.restartServer(); onDismiss(); Nav.back(); Nav.go(Route.Dsh) })
+            ListRow("重新加载页面", icon = "refresh", subtitle = "页面空白或停止响应时使用", onClick = onReload)
+            Divider()
+            ListRow("重启服务", icon = "power", subtitle = "配置或服务商变更后需要重启才会生效", onClick = { DshManager.restartServer(); onDismiss(); Nav.back(); Nav.go(Route.Dsh) })
             Divider()
             ListRow("服务日志", icon = "list", onClick = { onDismiss(); Nav.go(Route.Service(DshManager.SERVICE)) })
             Divider()

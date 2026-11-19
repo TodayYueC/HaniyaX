@@ -166,8 +166,10 @@ object ExtraKeys {
     private val byId: Map<String, ExtraKey> = catalogue.flatMap { it.keys }.associateBy { it.id }
 
     val DEFAULT_IDS: List<List<String>> = listOf(
-        listOf("esc", "tab", "ctrl", "alt", "up", "down", "left", "right", "home", "end"),
-        listOf("-", "|", "enter", "pgup", "pgdn", "paste", "compose", "search", "fullscreen", "keyboard"),
+        // Keyboard-like: arrows as an inverted T (↑ above ↓), HOME/END beside ↑, PGUP above PGDN,
+        // ESC/TAB and CTRL/ALT on the left like a physical keyboard, Enter bottom-right, app commands on the right.
+        listOf("esc", "/", "-", "home", "up", "end", "pgup", "paste", "compose", "keyboard"),
+        listOf("tab", "ctrl", "alt", "left", "down", "right", "pgdn", "search", "fullscreen", "enter"),
     )
 
     val DEFAULT: ExtraKeysLayout = ExtraKeysLayout(DEFAULT_IDS.map { row -> row.map { byId.getValue(it) } })
