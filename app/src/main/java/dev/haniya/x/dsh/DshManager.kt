@@ -87,6 +87,74 @@ object DshLogic {
         )
     }
 
+    /**
+     * Relief skin for DSH's own web UI: maps its design tokens (--dsw-alias-*) onto the active palette, for both of
+     * its light and dark token sets, so the built-in UI follows HaniyaX's theme. Layout and behaviour are untouched.
+     */
+    fun skinCss(vars: Map<String, String>, dark: Boolean): String {
+        fun v(k: String) = vars.getValue(k)
+        val border = if (dark) "rgba(255,255,255,0.06)" else "rgba(47,54,72,0.08)"
+        // materials.md: raised Regular = highlight from the upper-left + cool shade lower-right; in dark themes a
+        // shorter highlight offset with a wider blur avoids banding.
+        val raised = if (dark) "-3px -3px 22px ${v("--hx-hi")}, 7px 7px 18px ${v("--hx-shadow")}d9"
+        else "-7px -7px 18px rgba(255,255,255,0.95), 7px 7px 18px ${v("--hx-shadow")}8c"
+        val border2 = if (dark) "rgba(255,255,255,0.10)" else "rgba(47,54,72,0.12)"
+        val tokens = linkedMapOf(
+            "--dsh-boot-bg" to v("--hx-bg"),
+            "--dsw-alias-bg-base" to v("--hx-bg"),
+            "--dsw-alias-bg-layer-1" to v("--hx-bg"),
+            "--dsw-alias-bg-layer-2" to v("--hx-glass"),
+            "--dsw-alias-bg-layer-3" to v("--hx-track"),
+            "--dsw-alias-bg-overlay" to v("--hx-glass"),
+            "--dsw-alias-bg-module-platform" to v("--hx-bg"),
+            "--dsw-alias-bg-document-preview" to v("--hx-bg"),
+            "--dsw-specific-sidebar-fill" to v("--hx-bg"),
+            "--dsw-alias-settings-card-fill" to v("--hx-glass"),
+            "--dsw-alias-toast-bg" to v("--hx-glass"),
+            "--dsw-alias-tooltip-bg" to v("--hx-ink"),
+            "--dsw-alias-illustration-background" to v("--hx-bg"),
+            "--dsw-alias-illustration-surface" to v("--hx-glass"),
+            "--dsw-alias-label-primary" to v("--hx-ink"),
+            "--dsw-alias-label-primary-bluish" to v("--hx-ink"),
+            "--dsw-alias-label-secondary" to v("--hx-ink2"),
+            "--dsw-alias-label-tertiary" to v("--hx-ink2"),
+            "--dsw-alias-label-caption" to v("--hx-ink2"),
+            "--dsw-alias-brand-text" to v("--hx-ink"),
+            "--dsw-alias-brand-primary" to v("--hx-accent"),
+            "--dsw-alias-brand-primary-new-colorprimary-new-color" to v("--hx-accent"),
+            "--dsw-alias-button-primary-fill" to v("--hx-accent"),
+            "--dsw-alias-button-primary-hover" to v("--hx-mid"),
+            "--dsw-alias-button-info-fill" to v("--hx-accent"),
+            "--dsw-alias-link" to v("--hx-mid"),
+            "--dsw-alias-onboarding-accent" to v("--hx-accent"),
+            "--dsw-specific-sidebar-nav-item-active-accent" to v("--hx-soft"),
+            "--dsw-alias-interactive-bg-active" to v("--hx-soft"),
+            "--dsw-alias-markdown-code-block" to v("--hx-track"),
+            "--dsw-alias-markdown-inline-code" to v("--hx-track"),
+            // Composer and floating cards: the Relief raised ceramic (same colour as the page, dual soft shadows).
+            "--dsw-specific-input-major" to v("--hx-bg"),
+            "--dsw-elevation-soft" to raised,
+            "--dsw-radius-panel" to "26px",
+            "--dsw-alias-border-l1" to border,
+            "--dsw-alias-border-l2" to border2,
+            "--dsw-alias-border-l3" to border2,
+            "--dsw-alias-border-l4" to border2,
+        )
+        val decl = tokens.entries.joinToString("") { (k, value) -> "$k:$value;" }
+        return "html body,html body[data-ds-dark-theme]{$decl}html,body{background:${v("--hx-bg")};}"
+    }
+
+    /** A JavaScript string literal for [s]. */
+    fun jsString(s: String): String = buildString {
+        append('"')
+        for (ch in s) when (ch) {
+            '\\' -> append("\\\\"); '"' -> append("\\\""); '\n' -> append("\\n"); '\r' -> append("\\r")
+            '<' -> append("\\u003c")
+            else -> append(ch)
+        }
+        append('"')
+    }
+
     /** JavaScript that applies [vars] to <html> (+ data-theme) and announces them with an 'hx-theme' event. */
     fun themeScript(vars: Map<String, String>, dark: Boolean): String {
         val json = vars.entries.joinToString(",", "{", "}") { (k, v) -> "\"$k\":\"$v\"" }
@@ -97,6 +165,10 @@ object DshLogic {
               for(var k in v){d.style.setProperty(k,v[k]);}
               // Only HaniyaX-prefixed hooks: never touch the page's own data-theme / color-scheme.
               d.setAttribute('data-hx-theme','${if (dark) "dark" else "light"}');
+              var css=${jsString(skinCss(vars, dark))};
+              var st=document.getElementById('hx-dsh-skin');
+              if(!st){st=document.createElement('style');st.id='hx-dsh-skin';(document.head||d).appendChild(st);}
+              st.textContent=css;
               window.__HX_THEME__={dark:${dark},vars:v};
               window.dispatchEvent(new CustomEvent('hx-theme',{detail:window.__HX_THEME__}));
             }catch(e){}})();

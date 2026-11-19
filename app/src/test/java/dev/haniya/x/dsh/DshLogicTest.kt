@@ -17,6 +17,15 @@ class DshLogicTest {
         assertNull(DshLogic.lastToken(listOf("listening")))
     }
 
+    @Test fun skinMapsTokensAndQuotes() {
+        val v = DshLogic.cssVars(ReliefPalettes.Obsidian)
+        val css = DshLogic.skinCss(v, true)
+        assertTrue(css.contains("--dsw-alias-bg-base:#262a33;"))
+        assertTrue(css.contains("html body[data-ds-dark-theme]"))
+        assertEquals("\"a\\\"b\\u003c\"", DshLogic.jsString("a\"b<"))
+        assertTrue(DshLogic.themeScript(v, true).contains("hx-dsh-skin"))
+    }
+
     @Test fun compareVersions() {
         assertTrue(DshLogic.compare("0.2.10", "0.2.9") > 0)
         assertTrue(DshLogic.compare("0.2.2-rc.3", "0.2.2") < 0)
