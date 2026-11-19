@@ -1135,3 +1135,5 @@ Allow HaniyaX to install apps, then tap "Install" again
 This release has no installer attached
 Can't connect right now (HTTP {0})
 Download failed
+Running now
+All

@@ -134,19 +134,12 @@ fun HomeScreen() {
                         onLongPress = enterEdit,
                     ) {
                         when (m.id) {
-                            HomeLayoutOps.PROJECTS -> ProjectsModule(
-                                projects, agentName, Modifier,
+                            HomeLayoutOps.PROJECTS -> RecentProjects(
+                                projects,
                                 onOpen = { projectPath = it.path },
                                 onNew = { newProject = true },
-                                limit = HOME_PROJECTS,
-                                onAll = { Nav.selectTab(Route.Projects) },
                             )
-                            HomeLayoutOps.TASKS -> TasksModule(
-                                tasks, Modifier,
-                                onOpen = { HomeActions.openTask(it) },
-                                onMore = { taskId = it },
-                                limit = HOME_TASKS,
-                            )
+                            HomeLayoutOps.TASKS -> RunningTasks(tasks, editing)
                             else -> HomeLayoutOps.pluginIdOf(m.id)?.let { App.plugins.Card(it, Modifier.fillMaxWidth()) }
                         }
                     }
@@ -161,9 +154,9 @@ fun HomeScreen() {
                     onImport = importCard,
                     onDone = { editing = false },
                 )
-            } else if (hidden.isNotEmpty()) {
+            } else {
                 TextLink(
-                    "${hidden.size} 个模块已隐藏 · 编辑首页", { editing = true },
+                    if (hidden.isNotEmpty()) "${hidden.size} 个模块已隐藏 · 编辑首页" else "编辑首页", { editing = true },
                     modifier = Modifier.align(Alignment.CenterHorizontally),
                 )
             }
@@ -211,7 +204,6 @@ private fun HomeHeader(runningTasks: Int, onlineServices: Int, editing: Boolean,
         ) {
             Text(Fmt.greeting(hour), style = ReliefTheme.type.greeting, maxLines = 1, modifier = Modifier.weight(1f))
             if (editing) GlassButton("完成", onToggleEdit, size = ButtonSize.Small, icon = "check")
-            else IconCircleButton("edit", "编辑首页", onToggleEdit)
         }
         // Full width under the greeting so it never wraps around the buttons.
         Text(
@@ -293,6 +285,57 @@ private fun EditFooter(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             GlassButton("导入卡片", onImport, Modifier.weight(1f), icon = "download")
             PrimaryButton("完成", onDone, Modifier.weight(1f))
+        }
+    }
+}
+
+/** 正在运行: only live tasks, as quiet rows; the whole block is absent when nothing runs. */
+@Composable
+private fun RunningTasks(tasks: List<dev.haniya.x.runtime.TaskRecord>, editing: Boolean) {
+    val c = ReliefTheme.colors
+    val now = rememberNow(30_000)
+    val running = remember(tasks) { tasks.filter { it.status == TaskStatus.Running }.sortedByDescending { it.startedAt } }
+    if (running.isEmpty()) {
+        if (editing) Text("没有进行中的任务", style = ReliefTheme.type.caption, color = c.ink2, modifier = Modifier.padding(start = 4.dp))
+        return
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (!editing) SectionLabel("正在运行")
+        GlassCard {
+            running.forEachIndexed { i, t ->
+                if (i > 0) Divider()
+                ItemRow(
+                    title = t.title,
+                    subtitle = "${Fmt.folderName(t.cwd)} · ${dev.haniya.relief.component.tr(Fmt.duration(now - t.startedAt))}",
+                    onClick = { HomeActions.openTask(t.id) },
+                    leading = { Box(Modifier.padding(horizontal = 4.dp)) { StatusDot(c.accent, size = 8.dp) } },
+                    trailing = { dev.haniya.relief.icon.HIcon("chevR", size = 18.dp, tint = c.ink2.copy(alpha = 0.6f)) },
+                )
+            }
+        }
+    }
+}
+
+/** 最近项目: three plain rows and a link to the 项目 tab. */
+@Composable
+private fun RecentProjects(projects: List<Project>, onOpen: (Project) -> Unit, onNew: () -> Unit) {
+    val c = ReliefTheme.colors
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            SectionLabel("最近项目", Modifier.weight(1f))
+            if (projects.size > HOME_PROJECTS) TextLink("全部", { Nav.selectTab(Route.Projects) }, modifier = Modifier.padding(end = 4.dp, top = 6.dp))
+        }
+        GlassCard {
+            if (projects.isEmpty()) {
+                ItemRow(title = "新建项目", subtitle = "在 ~/projects 下创建一个空文件夹", translate = true, onClick = onNew,
+                    trailing = { dev.haniya.relief.icon.HIcon("plus", size = 18.dp, tint = c.ink2) })
+            } else projects.take(HOME_PROJECTS).forEachIndexed { i, p ->
+                if (i > 0) Divider()
+                ItemRow(
+                    title = p.name, subtitle = Fmt.shortPath(p.path), onClick = { onOpen(p) },
+                    trailing = { dev.haniya.relief.icon.HIcon("chevR", size = 18.dp, tint = c.ink2.copy(alpha = 0.6f)) },
+                )
+            }
         }
     }
 }
