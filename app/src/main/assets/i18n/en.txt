@@ -1123,3 +1123,15 @@ Copy
 Home
 All projects
 Edit home
+Check for updates
+Get new versions from GitHub Releases
+Current version {0}
+Checking…
+You're on the latest version
+Downloading {0}%
+Download and install
+Updating keeps your workspace, projects and sign-ins.
+Allow HaniyaX to install apps, then tap "Install" again
+This release has no installer attached
+Can't connect right now (HTTP {0})
+Download failed

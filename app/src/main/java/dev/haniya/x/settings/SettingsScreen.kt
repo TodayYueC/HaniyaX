@@ -1,5 +1,14 @@
 package dev.haniya.x.settings
 
+import dev.haniya.relief.component.PrimaryButton
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.heightIn
+import kotlinx.coroutines.launch
+import dev.haniya.relief.component.tr
+import androidx.compose.foundation.layout.Column
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -84,10 +93,14 @@ import android.provider.Settings as SystemSettings
 fun SettingsScreen() {
     val s by App.settings.settings.collectAsState()
     var resetOpen by remember { mutableStateOf(false) }
+    var updateOpen by remember { mutableStateOf(false) }
 
     Page(
         title = "设置",
-        overlay = { ResetSheet(resetOpen, onDismiss = { resetOpen = false }) },
+        overlay = {
+            ResetSheet(resetOpen, onDismiss = { resetOpen = false })
+            UpdateSheet(updateOpen, onDismiss = { updateOpen = false })
+        },
     ) {
         SectionLabel("外观")
         AppearanceCard(s.palette)
@@ -103,7 +116,7 @@ fun SettingsScreen() {
         SectionLabel("工作区")
         WorkspaceCard(onReset = { resetOpen = true })
         SectionLabel("关于")
-        AboutCard()
+        AboutCard(onCheckUpdate = { updateOpen = true })
     }
 }
 
@@ -486,11 +499,13 @@ private val NOTICES = listOf(
 )
 
 @Composable
-private fun AboutCard() {
+private fun AboutCard(onCheckUpdate: () -> Unit) {
     val context = LocalContext.current
     val toast = LocalToast.current
     GlassCard {
         ListRow("HaniyaX", icon = "terminal", value = "${BuildConfig.VERSION_NAME}（${BuildConfig.VERSION_CODE}）", chevron = false)
+        Divider()
+        ListRow("检查更新", icon = "refresh", subtitle = "从 GitHub Releases 获取新版本", onClick = onCheckUpdate)
         Divider()
         ListRow("系统", icon = "cpu", value = BackgroundGuide.androidName(Build.VERSION.SDK_INT), chevron = false)
     }
@@ -504,6 +519,93 @@ private fun AboutCard() {
                 onClick = { if (!openUrl(context, n.url)) toast.show("没有可以打开链接的应用", icon = "info") },
                 trailing = { dev.haniya.relief.icon.HIcon("link", size = 18.dp, tint = ReliefTheme.colors.ink2) },
             )
+        }
+    }
+}
+
+// ---- 检查更新 --------------------------------------------------------------------------------------------------
+
+private sealed interface UpdateUi {
+    data object Checking : UpdateUi
+    data class Latest(val version: String) : UpdateUi
+    data class Available(val release: AppRelease) : UpdateUi
+    data class Downloading(val release: AppRelease, val progress: Float) : UpdateUi
+    data class Ready(val release: AppRelease, val apk: java.io.File) : UpdateUi
+    data class Failed(val message: String) : UpdateUi
+}
+
+@Composable
+private fun UpdateSheet(visible: Boolean, onDismiss: () -> Unit) {
+    val c = ReliefTheme.colors
+    val context = LocalContext.current
+    val toast = LocalToast.current
+    val scope = rememberCoroutineScope()
+    var ui by remember { mutableStateOf<UpdateUi>(UpdateUi.Checking) }
+    val current = BuildConfig.VERSION_NAME
+
+    fun check() {
+        ui = UpdateUi.Checking
+        scope.launch {
+            ui = try {
+                val r = AppUpdate.latest()
+                if (AppUpdate.isNewer(r, current)) UpdateUi.Available(r) else UpdateUi.Latest(r.version)
+            } catch (e: Exception) {
+                UpdateUi.Failed(e.message ?: "暂时无法连接")
+            }
+        }
+    }
+    fun install(r: AppRelease, apk: java.io.File) {
+        if (!AppUpdate.install(context, apk)) toast.show("请允许 HaniyaX 安装应用，然后再点一次「安装」", icon = "info")
+        ui = UpdateUi.Ready(r, apk)
+    }
+    fun download(r: AppRelease) {
+        ui = UpdateUi.Downloading(r, 0f)
+        scope.launch {
+            try {
+                val apk = AppUpdate.download(context, r) { p -> ui = UpdateUi.Downloading(r, p) }
+                install(r, apk)
+            } catch (e: Exception) {
+                ui = UpdateUi.Failed(e.message ?: "下载失败")
+            }
+        }
+    }
+    LaunchedEffect(visible) { if (visible && ui !is UpdateUi.Downloading && ui !is UpdateUi.Ready) check() }
+
+    GlassSheet(visible = visible, onDismiss = onDismiss, title = "检查更新") {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(tr("当前版本 {0}").replace("{0}", current), style = ReliefTheme.type.caption, color = c.ink2, translate = false)
+            when (val s = ui) {
+                UpdateUi.Checking -> Text("正在检查…", style = ReliefTheme.type.body)
+                is UpdateUi.Latest -> Text("已是最新版本", style = ReliefTheme.type.bodyMedium)
+                is UpdateUi.Failed -> {
+                    Text(s.message, style = ReliefTheme.type.body, color = c.amberInk)
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        GlassButton("重试", { check() }, icon = "refresh")
+                        GlassButton("在浏览器中打开", { openUrl(context, AppUpdate.releasesPage) }, icon = "globe")
+                    }
+                }
+                is UpdateUi.Available, is UpdateUi.Downloading, is UpdateUi.Ready -> {
+                    val r = when (s) { is UpdateUi.Available -> s.release; is UpdateUi.Downloading -> s.release; is UpdateUi.Ready -> s.release; else -> return@Column }
+                    Text(tr("新版本 {0}").replace("{0}", r.version), style = ReliefTheme.type.bodyMedium, translate = false)
+                    val notes = AppUpdate.notesFor(r.notes, dev.haniya.relief.i18n.I18n.isChinese)
+                    if (notes.isNotBlank()) Column(
+                        Modifier.fillMaxWidth().heightIn(max = 220.dp).insetSurface(RoundedCornerShape(Radii.sm))
+                            .verticalScroll(rememberScrollState()).padding(12.dp),
+                    ) { Text(notes, style = ReliefTheme.type.caption, color = c.ink, translate = false) }
+                    when (s) {
+                        is UpdateUi.Downloading -> {
+                            dev.haniya.relief.component.ProgressBar(s.progress, Modifier.fillMaxWidth())
+                            Text(tr("正在下载 {0}%").replace("{0}", "${(s.progress * 100).toInt()}"), style = ReliefTheme.type.caption, color = c.ink2, translate = false)
+                        }
+                        is UpdateUi.Ready -> PrimaryButton("安装", { install(r, s.apk) }, Modifier.fillMaxWidth(), icon = "download")
+                        else -> Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            PrimaryButton("下载并安装", { download(r) }, icon = "download")
+                            GlassButton("查看", { openUrl(context, r.pageUrl) })
+                        }
+                    }
+                    Text("更新会保留工作区、项目和登录信息。", style = ReliefTheme.type.caption, color = c.ink2)
+                }
+            }
         }
     }
 }

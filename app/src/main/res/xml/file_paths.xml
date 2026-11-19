@@ -4,4 +4,6 @@
     <files-path name="workspace" path="rootfs/" />
     <!-- Phone storage, when the user granted access. -->
     <external-path name="phone" path="." />
+    <!-- Downloaded update APK. -->
+    <cache-path name="update" path="update/" />
 </paths>
