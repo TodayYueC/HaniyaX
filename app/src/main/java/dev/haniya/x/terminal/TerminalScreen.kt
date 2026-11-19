@@ -40,6 +40,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
@@ -336,8 +338,20 @@ private fun TabsBar(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         if (!compact) IconCircleButton("chevL", contentDescription = "返回首页（任务继续运行）", onClick = onBack, size = 40.dp, iconSize = 18.dp)
+        // Keep the focused tab visible (new tabs are appended at the end, often off-screen).
+        val tabScroll = rememberScrollState()
+        val tabX = remember { mutableMapOf<String, Int>() }
+        LaunchedEffect(currentId, tabs.size) {
+            val id = currentId ?: return@LaunchedEffect
+            // A new tab is measured a frame or two after it is focused: wait for its position.
+            repeat(30) {
+                val x = tabX[id]
+                if (x != null) { tabScroll.animateScrollTo((x - 24).coerceAtLeast(0)); return@LaunchedEffect }
+                delay(16)
+            }
+        }
         Row(
-            Modifier.weight(1f).horizontalScroll(rememberScrollState()).padding(vertical = 8.dp, horizontal = 4.dp),
+            Modifier.weight(1f).horizontalScroll(tabScroll).padding(vertical = 8.dp, horizontal = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -346,6 +360,7 @@ private fun TabsBar(
                 val shape = RoundedCornerShape(Radii.pill)
                 Row(
                     Modifier
+                        .onGloballyPositioned { tabX[t.id] = it.positionInParent().x.toInt() }
                         .heightIn(min = if (compact) 32.dp else 38.dp)
                         .widthIn(max = 220.dp)
                         .then(if (selected) Modifier.insetSurface(shape, depth = 3.dp) else Modifier.glass(shape, GlassLevel.Thin))
@@ -478,6 +493,26 @@ private fun SearchBar(controller: TerminalController, onClose: () -> Unit) {
         if (!controller.showMatch(matches[index], mark, query)) search()
     }
     LaunchedEffect(query) { delay(180); search() }
+    // The terminal reflows when the keyboard opens/closes or the window resizes: row numbers captured by the last
+    // search no longer point at the match. Re-locate the current match on the new layout.
+    LaunchedEffect(Unit) {
+        var rows = controller.emulator?.mRows ?: 0
+        var cols = controller.emulator?.mColumns ?: 0
+        while (true) {
+            delay(300)
+            val e = controller.emulator ?: continue
+            if (e.mRows != rows || e.mColumns != cols) {
+                rows = e.mRows; cols = e.mColumns
+                if (query.isNotEmpty()) {
+                    val keep = index
+                    mark = controller.scrollMark()
+                    matches = ScrollbackMatcher.find(controller.snapshotRows(), query)
+                    index = if (matches.isEmpty()) -1 else keep.coerceIn(0, matches.lastIndex)
+                    if (index >= 0) controller.showMatch(matches[index], mark, query) else controller.clearHighlight()
+                }
+            }
+        }
+    }
 
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
