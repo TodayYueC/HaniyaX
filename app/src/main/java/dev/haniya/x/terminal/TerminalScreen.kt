@@ -176,6 +176,9 @@ fun TerminalScreen(taskId: String?) {
 
     // Keys (hardware keyboard, IME, Enter) must reach the terminal, not Compose focus navigation:
     // give the TerminalView focus whenever the visible task changes.
+    LaunchedEffect(currentId) {
+        if (searchOpen) { searchOpen = false; controller.endSearch() }
+    }
     LaunchedEffect(currentId, session) {
         if (currentId != null) {
             delay(50)
@@ -545,7 +548,6 @@ private fun PastePreviewSheet(text: String?, onPaste: (String) -> Unit, onDismis
         val stats = remember(t) { PasteText.stats(t) }
         val preview = remember(t) { PasteText.previewLines(t) }
         Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("粘贴预览", style = ReliefTheme.type.title)
             Text("${stats.chars} 个字符 · ${stats.lines} 行。确认内容无误后再发送到终端。", style = ReliefTheme.type.caption, color = c.ink2)
             Column(
                 Modifier.fillMaxWidth().heightIn(max = 280.dp).insetSurface(RoundedCornerShape(Radii.sm))
@@ -557,7 +559,6 @@ private fun PastePreviewSheet(text: String?, onPaste: (String) -> Unit, onDismis
             Row(Modifier.fillMaxWidth().padding(bottom = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 PrimaryButton("粘贴", onClick = { onPaste(t) }, icon = "paste")
                 if (stats.lines > 1) GlassButton("作为一行粘贴", onClick = { onPaste(PasteText.joinAsOneLine(t)) })
-                GlassButton("取消", onClick = onDismiss)
             }
         }
     }

@@ -379,7 +379,6 @@ private fun SandboxSheet(visible: Boolean, onDismiss: () -> Unit) {
     val c = ReliefTheme.colors
     GlassSheet(visible = visible, onDismiss = onDismiss, title = "权限与沙箱") {
         Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("权限与沙箱", style = ReliefTheme.type.title)
             Text(
                 "DeepSeek Harness 的「只读」和「工作区可写」依赖 Linux 沙箱（bubblewrap / Landlock）。HaniyaX 的工作区运行在 proot 中，这些沙箱不可用，工具调用会被拒绝执行。",
                 style = ReliefTheme.type.body, color = c.ink2,

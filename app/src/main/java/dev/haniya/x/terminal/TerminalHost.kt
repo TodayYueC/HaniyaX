@@ -101,6 +101,8 @@ class TerminalController(private val context: Context) {
         if (v.currentSession !== session) {
             if (v.isSelectingText) v.stopTextSelectionMode()
             v.setHoldScrollPosition(false)
+            // A highlight belongs to the previous session's rows; on another session it can cover the whole screen.
+            v.clearSearchHighlight()
             v.attachSession(session)
             if (session != null && v.mEmulator != null) v.onScreenUpdated()
             v.invalidate()

@@ -403,7 +403,6 @@ private fun NewFolderSheet(visible: Boolean, dir: String, onDismiss: () -> Unit,
     var name by remember(visible) { mutableStateOf("") }
     GlassSheet(visible = visible, onDismiss = onDismiss, title = "新建文件夹") {
         Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("新建文件夹", style = ReliefTheme.type.title)
             Text("位置：${GuestPaths.display(dir)}", style = ReliefTheme.type.caption, color = ReliefTheme.colors.ink2, translate = false)
             GlassField(name, { name = it }, placeholder = "文件夹名称")
             GuestPaths.validName(name).takeIf { name.isNotEmpty() }?.let { Text(it, style = ReliefTheme.type.caption, color = ReliefTheme.colors.amberInk) }
