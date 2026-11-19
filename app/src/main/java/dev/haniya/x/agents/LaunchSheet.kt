@@ -15,6 +15,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.referentialEqualityPolicy
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -75,7 +76,9 @@ fun AgentLaunchSheet(request: LaunchRequest?, onDismiss: () -> Unit) {
     val fullAccess by fullAccessFlow.collectAsState()
 
     // Keep the last request while the sheet animates out; a new request object starts a fresh flow.
-    var held by remember { mutableStateOf<LaunchRequest?>(null) }
+    // Referential policy: a new request equal to the previous one (same agent, reopened) must still replace it,
+    // otherwise `request !== held` stays true and every composition bumps the generation and resets the choice.
+    var held by remember { mutableStateOf<LaunchRequest?>(null, referentialEqualityPolicy()) }
     var generation by remember { mutableIntStateOf(0) }
     if (request != null && request !== held) {
         held = request
@@ -217,7 +220,7 @@ private fun ProjectStep(projects: List<Project>, agentId: String?, onPick: (Stri
     var name by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
 
-    PlaceRow(icon = "home", title = "主目录", subtitle = Paths.GUEST_HOME, onClick = { onPick(Paths.GUEST_HOME) })
+    PlaceRow(icon = "home", title = "主目录", subtitle = Paths.GUEST_HOME, onClick = { onPick(Paths.GUEST_HOME) }, translate = true)
     projects.filter { it.path != Paths.GUEST_HOME }.forEach { p ->
         Divider()
         PlaceRow(
@@ -229,7 +232,7 @@ private fun ProjectStep(projects: List<Project>, agentId: String?, onPick: (Stri
         )
     }
     Divider()
-    PlaceRow(icon = "plus", title = "新建项目", subtitle = "在 ~/projects 下创建一个空文件夹", onClick = { newOpen = !newOpen; error = null })
+    PlaceRow(icon = "plus", title = "新建项目", subtitle = "在 ~/projects 下创建一个空文件夹", onClick = { newOpen = !newOpen; error = null }, translate = true)
 
     if (newOpen) {
         val submit = {
@@ -276,7 +279,7 @@ private fun ProjectStep(projects: List<Project>, agentId: String?, onPick: (Stri
 }
 
 @Composable
-private fun PlaceRow(icon: String, title: String, subtitle: String, onClick: () -> Unit, badge: String? = null) {
+private fun PlaceRow(icon: String, title: String, subtitle: String, onClick: () -> Unit, badge: String? = null, translate: Boolean = false) {
     val c = ReliefTheme.colors
     Row(
         Modifier.fillMaxWidth().heightIn(min = 56.dp).pressable(pressedScale = 1f, onClick = onClick).padding(vertical = 8.dp),
@@ -285,8 +288,8 @@ private fun PlaceRow(icon: String, title: String, subtitle: String, onClick: () 
     ) {
         IconTile(icon, size = 34.dp, filled = false)
         Column(Modifier.weight(1f)) {
-            Text(title, style = ReliefTheme.type.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, translate = false)
-            Text(subtitle, style = agentMono, color = c.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis, translate = false)
+            Text(title, style = ReliefTheme.type.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, translate = translate)
+            Text(subtitle, style = agentMono, color = c.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis, translate = translate)
         }
         if (badge != null) Badge(badge, tone = BadgeTone.Neutral)
     }
