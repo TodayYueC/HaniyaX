@@ -27,6 +27,9 @@ class DshLogicTest {
         val v = DshLogic.cssVars(ReliefPalettes.Platinum)
         assertEquals(16, v.size)
         assertEquals("#e6eaf1", v["--hx-bg"])
-        assertTrue(DshLogic.themeScript(v, false).contains("data-theme','light'"))
+        val script = DshLogic.themeScript(v, false)
+        assertTrue(script.contains("data-hx-theme','light'"))
+        // The built-in DSH UI owns data-theme / color-scheme; the injection must not override them.
+        assertTrue(!script.contains("'data-theme'") && !script.contains("colorScheme"))
     }
 }

@@ -95,8 +95,8 @@ object DshLogic {
               var v=$json, d=document.documentElement;
               if(!d){return;}
               for(var k in v){d.style.setProperty(k,v[k]);}
-              d.setAttribute('data-theme','${if (dark) "dark" else "light"}');
-              d.style.colorScheme='${if (dark) "dark" else "light"}';
+              // Only HaniyaX-prefixed hooks: never touch the page's own data-theme / color-scheme.
+              d.setAttribute('data-hx-theme','${if (dark) "dark" else "light"}');
               window.__HX_THEME__={dark:${dark},vars:v};
               window.dispatchEvent(new CustomEvent('hx-theme',{detail:window.__HX_THEME__}));
             }catch(e){}})();

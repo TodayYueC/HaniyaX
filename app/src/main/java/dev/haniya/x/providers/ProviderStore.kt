@@ -177,7 +177,7 @@ object ProviderStore {
                 val loggedIn = host("/root/.claude/.credentials.json").isFile || (read("/root/.claude.json")?.contains("\"oauthAccount\"") == true)
                 EffectiveConfig(
                     t, "~/.claude/settings.json", e.baseUrl, e.model,
-                    auth = when { e.key != null -> "${e.keyKind} ${Masks.key(e.key)}"; loggedIn -> "官方账号登录（已登录）"; else -> "官方账号登录（尚未登录）" },
+                    auth = when { e.key != null -> "${e.keyKind} ${Masks.key(e.key)}"; loggedIn -> "官方账号 · 已登录"; else -> "官方账号 · 未登录" },
                     overrides = relevant, matchedProviderId = current,
                 )
             }

@@ -42,6 +42,9 @@ object DshWebView {
         ctx.baseContext = activity
         val w = web ?: create().also { web = it }
         (w.parent as? ViewGroup)?.removeView(w)
+        // Must be MATCH_PARENT: with WRAP_CONTENT height (Compose AndroidView's default) WebView reports a 0px
+        // CSS viewport height, so pages laid out with height: 100% / 100vh collapse to nothing.
+        w.layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         return w
     }
 
@@ -54,6 +57,8 @@ object DshWebView {
     fun current(): WebView? = web
 
     private fun create(): WebView = WebView(ctx).apply {
+        // Debug builds only: inspectable through chrome://inspect / DevTools protocol.
+        if (dev.haniya.x.BuildConfig.DEBUG) WebView.setWebContentsDebuggingEnabled(true)
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
         settings.databaseEnabled = true
