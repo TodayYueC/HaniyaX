@@ -3,8 +3,8 @@ package dev.haniya.x.home
 import kotlinx.serialization.Serializable
 
 /**
- * Home module ids: "projects", "tasks", "services" (built-in) and "plugin:<id>" for plugin cards.
- * The three entry tiles (terminal, agents, DSH) are always shown and are not modules.
+ * Home module ids: "projects", "tasks" (built-in), addable cards "services", "dsh", "terminal", "files",
+ * "agent:<agentId>", "project:<guest path>", and "plugin:<id>" for plugin cards.
  * CONTRACT — owned by the home module; persisted in Paths.state/home.json.
  */
 @Serializable
@@ -20,6 +20,8 @@ sealed interface StartTarget {
 
 @Serializable
 data class HomeLayout(
-    val modules: List<HomeModule> = listOf(HomeModule("projects"), HomeModule("tasks"), HomeModule("services")),
+    val modules: List<HomeModule> = listOf(HomeModule("projects"), HomeModule("tasks")),
     val start: StartTarget = StartTarget.Home,
+    /** Layout format: 1 = services shown by default (before the bottom bar), 2 = services is an opt-in card. */
+    val version: Int = 1,
 )

@@ -125,7 +125,7 @@ fun TasksModule(
                     subtitle = "${Fmt.folderName(t.cwd)} · $status · $time",
                     subtitleColor = if (t.status == TaskStatus.KilledBySystem) c.amberInk else null,
                     onClick = { onOpen(t.id) },
-                    leading = { IconTile(if (t.kind == TaskKind.Agent) "bot" else "terminal", size = 34.dp, filled = false) },
+                    leading = { IconTile(if (t.kind == TaskKind.Agent) dev.haniya.x.agents.Adapters.iconOf(t.agentId) else "terminal", size = 34.dp, filled = false) },
                     trailing = { SmallRoundButton("list", "更多操作", { onMore(t.id) }) },
                 )
             }

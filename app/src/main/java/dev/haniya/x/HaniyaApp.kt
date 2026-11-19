@@ -27,6 +27,11 @@ import dev.haniya.x.settings.SettingsStore
 class HaniyaApp : Application() {
     override fun onCreate() {
         super.onCreate()
+        // Product logos (Lobe Icons, MIT) for the coding agents; see NOTICE.
+        dev.haniya.relief.icon.BrandIcons.register("claude", R.drawable.agent_claude)
+        dev.haniya.relief.icon.BrandIcons.register("codex", R.drawable.agent_codex)
+        dev.haniya.relief.icon.BrandIcons.register("antigravity", R.drawable.agent_antigravity)
+        dev.haniya.relief.icon.BrandIcons.register("opencode", R.drawable.agent_opencode, monochrome = true)
         App.context = this
         Paths.init(this)
         runCatching { I18n.init(this) }

@@ -227,6 +227,14 @@ fun HIcon(
     contentDescription: String? = null,
     brush: Brush? = null,
 ) {
+    BrandIcons.get(name)?.let { b ->
+        // Product logos keep their own colours; monochrome ones take the ink colour so they work in dark themes.
+        Image(
+            androidx.compose.ui.res.painterResource(b.res), contentDescription, modifier.size(size),
+            colorFilter = if (b.monochrome) androidx.compose.ui.graphics.ColorFilter.tint(dev.haniya.relief.theme.ReliefTheme.colors.ink) else null,
+        )
+        return
+    }
     if (brush == null) {
         Icon(ReliefIcons.get(name), contentDescription, modifier.size(size), tint = tint)
     } else {
@@ -242,4 +250,20 @@ fun HIcon(
                 },
         )
     }
+}
+
+/**
+ * Raster product logos the app registers at start-up ("brand:<name>"), e.g. the coding agents' own icons.
+ * HIcon / IconTile render them unchanged instead of a Relief line icon.
+ */
+object BrandIcons {
+    class Brand(@androidx.annotation.DrawableRes val res: Int, val monochrome: Boolean)
+    private val map = HashMap<String, Brand>()
+    const val PREFIX = "brand:"
+
+    fun register(name: String, @androidx.annotation.DrawableRes res: Int, monochrome: Boolean = false) {
+        map[name] = Brand(res, monochrome)
+    }
+
+    fun get(icon: String): Brand? = if (icon.startsWith(PREFIX)) map[icon.removePrefix(PREFIX)] else null
 }

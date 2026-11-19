@@ -385,7 +385,7 @@ private fun TabsBar(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     StatusDot(t.status)
-                    HIcon(if (t.kind == TaskKind.Agent) "bot" else "terminal", size = 16.dp, tint = if (selected) c.mid else c.ink2)
+                    HIcon(if (t.kind == TaskKind.Agent) dev.haniya.x.agents.Adapters.iconOf(t.agentId) else "terminal", size = 16.dp, tint = if (selected) c.mid else c.ink2)
                     Text(
                         TabLabels.title(t, agentNames[t.agentId]),
                         style = ReliefTheme.type.label,

@@ -281,7 +281,8 @@ fun IconTile(icon: String, modifier: Modifier = Modifier, size: Dp = 40.dp, fill
         modifier.size(size).glass(shape, GlassLevel.Thin),
         contentAlignment = Alignment.Center,
     ) {
-        HIcon(icon, size = size * (if (filled) 0.58f else 0.56f), brush = c.brush)
+        if (dev.haniya.relief.icon.BrandIcons.get(icon) != null) HIcon(icon, size = size * 0.62f)
+        else HIcon(icon, size = size * (if (filled) 0.58f else 0.56f), brush = c.brush)
     }
 }
 

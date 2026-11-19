@@ -816,7 +816,7 @@ Stops it first, then deletes ~/.haniyax/services/{0}.json. Logs and project file
 Health check
 Delete service
 Delete service {0}?
-Background service
+Background services
 Command
 Open in browser
 Address
@@ -1137,3 +1137,17 @@ Can't connect right now (HTTP {0})
 Download failed
 Running now
 All
+Running terminals and agents
+The three most recent projects
+Sessions, and a new Shell in one tap
+Open the embedded workspace
+Browse the workspace and phone storage
+Status, address, start/stop in one tap
+Plugin cards
+{0} · running
+No running sessions
+New Shell
+Add cards
+Tap "Add" to put a card on Home; reorder it above
+All cards are already on Home
+MIT · agent icons

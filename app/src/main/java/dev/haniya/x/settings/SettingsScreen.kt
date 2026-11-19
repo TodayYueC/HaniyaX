@@ -492,6 +492,7 @@ private val NOTICES = listOf(
     Notice("Termux terminal-emulator / terminal-view", "Apache-2.0", "https://github.com/termux/termux-app"),
     Notice("proot（Termux 分支）", "GPL-2.0 · 查看源代码", "https://github.com/termux/proot"),
     Notice("talloc", "LGPL-3.0", "https://talloc.samba.org"),
+    Notice("Lobe Icons", "MIT · 智能体图标", "https://github.com/lobehub/lobe-icons"),
     Notice("Debian", "各软件包遵循其自由软件许可证", "https://www.debian.org/legal/licenses/"),
     Notice("Haniya Relief UI", "设计规范与组件", "https://github.com/TodayYueC/haniya-relief-ui"),
     Notice("Inter 字体", "SIL OFL 1.1", "https://github.com/rsms/inter"),

@@ -42,4 +42,5 @@ object HomeStore {
     fun move(id: String, delta: Int, available: (String) -> Boolean) = update { HomeLayoutOps.move(it, id, delta, available) }
     fun setHidden(id: String, hidden: Boolean) = update { HomeLayoutOps.setHidden(it, id, hidden) }
     fun setPinned(id: String, pinned: Boolean) = update { HomeLayoutOps.setPinned(it, id, pinned) }
+    fun add(id: String) = update { HomeLayoutOps.add(it, id) }
 }

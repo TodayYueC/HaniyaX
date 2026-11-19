@@ -111,7 +111,7 @@ fun ProjectSheet(
             ItemRow(
                 title = t.title,
                 subtitle = tr("回到正在运行的会话"),
-                leading = { IconTile(if (t.kind == TaskKind.Agent) "bot" else "terminal", size = 34.dp, filled = false) },
+                leading = { IconTile(if (t.kind == TaskKind.Agent) dev.haniya.x.agents.Adapters.iconOf(t.agentId) else "terminal", size = 34.dp, filled = false) },
                 trailing = { Badge("运行中", tone = BadgeTone.Accent) },
                 onClick = { HomeActions.openTask(t.id); onDismiss() },
             )

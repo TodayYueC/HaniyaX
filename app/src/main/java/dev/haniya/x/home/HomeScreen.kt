@@ -90,10 +90,14 @@ fun HomeScreen() {
     val pluginById = remember(plugins) { plugins.associateBy { it.id } }
     val available: (String) -> Boolean = { id ->
         val pid = HomeLayoutOps.pluginIdOf(id)
-        if (pid != null) pid in pluginById else id in HomeLayoutOps.BUILTIN
+        val aid = HomeLayoutOps.agentIdOf(id)
+        when {
+            pid != null -> pid in pluginById
+            aid != null -> dev.haniya.x.agents.Adapters.find(aid) != null
+            else -> HomeLayoutOps.isKnown(id)
+        }
     }
-    // Services have their own tab now; the home page keeps tasks, recent projects and cards.
-    val onHome: (String) -> Boolean = { id -> id != HomeLayoutOps.SERVICES && available(id) }
+    val onHome = available
     val visible = HomeLayoutOps.visible(layout, onHome)
     val hidden = HomeLayoutOps.hidden(layout, onHome)
     val agentName: (String) -> String = { id -> App.agents.agents.firstOrNull { it.id == id }?.name ?: id }
@@ -123,7 +127,7 @@ fun HomeScreen() {
                 key(m.id) {
                     ModuleSlot(
                         title = moduleTitle(m.id, pluginById),
-                        builtin = m.id in HomeLayoutOps.BUILTIN,
+                        builtin = m.id in HomeLayoutOps.BUILTIN || (m.id in HomeLayoutOps.SIMPLE_CARDS && m.id != HomeLayoutOps.DSH),
                         module = m,
                         editing = editing,
                         canUp = HomeLayoutOps.canMove(layout, m.id, -1, onHome),
@@ -135,30 +139,34 @@ fun HomeScreen() {
                     ) {
                         when (m.id) {
                             HomeLayoutOps.PROJECTS -> RecentProjects(
-                                projects,
+                                projects, editing,
                                 onOpen = { projectPath = it.path },
                                 onNew = { newProject = true },
                             )
                             HomeLayoutOps.TASKS -> RunningTasks(tasks, editing)
-                            else -> HomeLayoutOps.pluginIdOf(m.id)?.let { App.plugins.Card(it, Modifier.fillMaxWidth()) }
+                            HomeLayoutOps.SERVICES -> ServicesModule(services, serviceErrors, Modifier)
+                            HomeLayoutOps.TERMINAL -> TerminalHomeCard(tasks)
+                            HomeLayoutOps.DSH -> DshHomeCard()
+                            HomeLayoutOps.FILES -> ShortcutHomeCard("folder", "文件", "浏览工作区与手机存储", true) { Nav.go(Route.Files()) }
+                            else -> {
+                                HomeLayoutOps.agentIdOf(m.id)?.let { AgentHomeCard(it, tasks, onLaunch = { r -> launch = r }) }
+                                HomeLayoutOps.projectPathOf(m.id)?.let { ProjectHomeCard(it, projects, onOpen = { p -> projectPath = p }, onLaunch = { r -> launch = r }) }
+                                HomeLayoutOps.pluginIdOf(m.id)?.let { App.plugins.Card(it, Modifier.fillMaxWidth()) }
+                            }
                         }
                     }
                 }
             }
 
             if (editing) {
-                EditFooter(
-                    hidden = hidden,
-                    titleOf = { moduleTitle(it, pluginById) },
-                    onShow = { HomeStore.setHidden(it, false) },
+                AddCardsPanel(
+                    groups = cardOptions(layout, projects, pluginById),
+                    onAdd = { HomeStore.add(it) },
                     onImport = importCard,
                     onDone = { editing = false },
                 )
             } else {
-                TextLink(
-                    if (hidden.isNotEmpty()) "${hidden.size} 个模块已隐藏 · 编辑首页" else "编辑首页", { editing = true },
-                    modifier = Modifier.align(Alignment.CenterHorizontally),
-                )
+                TextLink("编辑首页", { editing = true }, modifier = Modifier.align(Alignment.CenterHorizontally), icon = "plus")
             }
             Spacer(Modifier.windowInsetsPadding(WindowInsets.navigationBars).height(dev.haniya.x.ui.bottomGap()))
         }
@@ -186,9 +194,15 @@ private const val HOME_TASKS = 3
 
 private fun moduleTitle(id: String, plugins: Map<String, PluginSummary>): String = when (id) {
     HomeLayoutOps.PROJECTS -> "最近项目"
-    HomeLayoutOps.TASKS -> "进行中的任务"
-    HomeLayoutOps.SERVICES -> "后台服务与日志"
-    else -> HomeLayoutOps.pluginIdOf(id)?.let { pid -> plugins[pid]?.name ?: pid } ?: id
+    HomeLayoutOps.TASKS -> "正在运行"
+    HomeLayoutOps.SERVICES -> "后台服务"
+    HomeLayoutOps.TERMINAL -> "终端"
+    HomeLayoutOps.DSH -> "DeepSeek Harness"
+    HomeLayoutOps.FILES -> "文件"
+    else -> HomeLayoutOps.pluginIdOf(id)?.let { pid -> plugins[pid]?.name ?: pid }
+        ?: HomeLayoutOps.agentIdOf(id)?.let { dev.haniya.x.agents.Adapters.find(it)?.info?.name ?: it }
+        ?: HomeLayoutOps.projectPathOf(id)?.let { Fmt.folderName(it) }
+        ?: id
 }
 
 @Composable
@@ -254,40 +268,6 @@ private fun ModuleSlot(
     }
 }
 
-@Composable
-private fun EditFooter(
-    hidden: List<dev.haniya.x.home.HomeModule>,
-    titleOf: (String) -> String,
-    onShow: (String) -> Unit,
-    onImport: () -> Unit,
-    onDone: () -> Unit,
-) {
-    GlassCard {
-        CardHeader(
-            "已隐藏的模块", icon = "eyeOff",
-            caption = if (hidden.isEmpty()) "没有隐藏的模块" else "${hidden.size} 个",
-        )
-        if (hidden.isNotEmpty()) {
-            Spacer(Modifier.height(6.dp))
-            hidden.forEachIndexed { i, m ->
-                if (i > 0) Divider()
-                ItemRow(
-                    title = titleOf(m.id),
-                    translate = m.id in HomeLayoutOps.BUILTIN,
-                    trailing = { GlassButton("显示", { onShow(m.id) }, size = ButtonSize.Small, icon = "eye") },
-                )
-            }
-        }
-    }
-    GlassCard {
-        CardHeader("首页卡片", icon = "puzzle", caption = "让智能体用 hx plugin new 创建卡片，或导入别人分享的 .hxcard 文件")
-        Spacer(Modifier.height(14.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            GlassButton("导入卡片", onImport, Modifier.weight(1f), icon = "download")
-            PrimaryButton("完成", onDone, Modifier.weight(1f))
-        }
-    }
-}
 
 /** 正在运行: only live tasks, as quiet rows; the whole block is absent when nothing runs. */
 @Composable
@@ -318,10 +298,10 @@ private fun RunningTasks(tasks: List<dev.haniya.x.runtime.TaskRecord>, editing: 
 
 /** 最近项目: three plain rows and a link to the 项目 tab. */
 @Composable
-private fun RecentProjects(projects: List<Project>, onOpen: (Project) -> Unit, onNew: () -> Unit) {
+private fun RecentProjects(projects: List<Project>, editing: Boolean, onOpen: (Project) -> Unit, onNew: () -> Unit) {
     val c = ReliefTheme.colors
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        if (!editing) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             SectionLabel("最近项目", Modifier.weight(1f))
             if (projects.size > HOME_PROJECTS) TextLink("全部", { Nav.selectTab(Route.Projects) }, modifier = Modifier.padding(end = 4.dp, top = 6.dp))
         }
