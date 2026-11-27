@@ -6,13 +6,18 @@ import android.net.LocalSocket
 import android.os.Build
 import android.os.Environment
 import android.os.Process
+import android.system.Os
+import android.system.OsConstants
 import android.util.Log
+import dev.haniya.x.core.Paths
+import dev.haniya.x.runtime.Bind
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.DataInputStream
 import java.io.DataOutputStream
+import java.io.File
 import java.io.IOException
 import java.security.SecureRandom
 import java.util.UUID
@@ -62,14 +67,34 @@ class HostBridge(private val context: Context) {
     private val endpoint = "haniyax-host-${UUID.randomUUID()}"
     private val key = ByteArray(32).also { SecureRandom().nextBytes(it) }.joinToString("") { "%02x".format(it) }
     private val token = key.toByteArray(Charsets.US_ASCII)
-    val environment = mapOf("HX_HOST_SOCKET" to endpoint, "HX_HOST_TOKEN" to key)
+    private val descriptor = publishDescriptor()
 
     private var server: LocalServerSocket? = null
     private var probing: HostRunner? = null
     private val clients = mutableSetOf<LocalSocket>()
     private val sessions = linkedMapOf<String, Session>()
 
+    /** Bind only this descriptor outside the guest. Tools can use the CLI with a clean environment. */
+    internal fun workspaceBind(): Bind? = descriptor
+        ?.takeIf { Paths.host(Paths.GUEST_HOST_BRIDGE).isFile }
+        ?.let { Bind(it.path, "${Paths.GUEST_HOST_BRIDGE}!") }
+
+    private fun publishDescriptor(): File? = runCatching {
+        val parent = context.noBackupFilesDir
+        val destination = File(parent, "android-host-bridge")
+        val temp = File.createTempFile(".host-bridge-", null, parent)
+        try {
+            Os.chmod(temp.path, 0x180) // 0600 before writing the credential
+            temp.writeText("$endpoint\n$key\n")
+            Os.rename(temp.path, destination.path)
+            destination
+        } finally {
+            temp.delete()
+        }
+    }.onFailure { Log.w(TAG, "Cannot publish Android host connection descriptor", it) }.getOrNull()
+
     fun start() {
+        if (descriptor == null) return
         val listening = synchronized(lock) {
             if (server != null) return
             try {
@@ -110,7 +135,7 @@ class HostBridge(private val context: Context) {
         }
         disable()
         open.first?.let {
-            runCatching { android.system.Os.shutdown(it.fileDescriptor, android.system.OsConstants.SHUT_RDWR) }
+            runCatching { Os.shutdown(it.fileDescriptor, OsConstants.SHUT_RDWR) }
             runCatching { it.close() }
         }
         open.second.forEach(HostRunner::closeSocket)

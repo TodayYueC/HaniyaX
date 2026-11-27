@@ -366,8 +366,8 @@ class WorkspaceImpl(private val context: Context) : WorkspaceApi {
             layout = l,
             guestCwd = resolveGuestCwd(cwd),
             argv = argv,
-            extraEnv = extraEnv + App.hostBridge.environment,
-            optionalBinds = binds,
+            extraEnv = extraEnv,
+            optionalBinds = binds + listOfNotNull(App.hostBridge.workspaceBind()),
             androidRoot = System.getenv("ANDROID_ROOT"),
             androidData = System.getenv("ANDROID_DATA"),
         )

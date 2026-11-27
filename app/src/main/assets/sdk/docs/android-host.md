@@ -33,7 +33,7 @@ haniyax host --help
 
 审批仅能在 Android 界面完成。设置页支持取消单个请求、查看近期执行状态和紧急关闭。工作区通知也有紧急关闭入口。关闭桥接会拒绝新操作、撤销待批准请求，并终止受桥接管理的执行及其子进程。已经提交给 Android 系统服务的变更可能已生效。
 
-桥接 IPC 使用抽象 Unix socket，校验 Android 对端 UID 和每次 App 进程启动生成的随机凭证。宿主服务位于 PRoot 外部。允许 Root 时，每次执行都会验证实际的 Android UID 0。PRoot 工作区内的项目和 Agent 共用该凭证以及 HaniyaX 的 Android 应用 UID，因此这里的授权是针对整个工作区。在 Android Root 管理器中也可单独撤销 HaniyaX 的 `su` 授权。
+桥接 IPC 使用抽象 Unix socket，校验 Android 对端 UID 和每次 App 进程启动生成的随机凭证。 CLI 从工作区内的绑定文件取得连接信息，Agent 清理环境变量后仍可使用。宿主服务位于 PRoot 外部。允许 Root 时，每次执行都会验证实际的 Android UID 0。PRoot 工作区内的项目和 Agent 共用该凭证以及 HaniyaX 的 Android 应用 UID，因此这里的授权是针对整个工作区。在 Android Root 管理器中也可单独撤销 HaniyaX 的 `su` 授权。
 
 ## Agent quick reference
 

@@ -11,6 +11,10 @@
 #include <sys/stat.h>
 #include <termios.h>
 
+#ifndef HX_DESCRIPTOR
+#define HX_DESCRIPTOR "/opt/haniyax/.host-bridge"
+#endif
+
 static const char usage[] =
     "Usage: haniyax host [--timeout SECONDS] [--root] COMMAND\n"
     "\n"
@@ -238,6 +242,23 @@ static int relay(int sock, int input, int output, bool tty, bool receive_only) {
     return result;
 }
 
+static bool connection_details(char *name, size_t capacity, char token[HX_TOKEN + 2]) {
+    int fd = open(HX_DESCRIPTOR, O_RDONLY | O_NONBLOCK | O_NOFOLLOW | O_CLOEXEC);
+    if (fd < 0) return false;
+    struct stat st;
+    FILE *descriptor = NULL;
+    if (!fstat(fd, &st) && S_ISREG(st.st_mode)) descriptor = fdopen(fd, "r");
+    if (!descriptor) { close(fd); return false; }
+    bool valid = fgets(name, capacity, descriptor) && fgets(token, HX_TOKEN + 2, descriptor);
+    fclose(descriptor);
+    if (!valid) return false;
+    size_t size = strlen(name);
+    if (size < 2 || name[size - 1] != '\n' || strlen(token) != HX_TOKEN + 1 || token[HX_TOKEN] != '\n')
+        return false;
+    name[size - 1] = token[HX_TOKEN] = '\0';
+    return true;
+}
+
 int main(int argc, char **argv) {
     if (argc < 2) return bad_usage("expected 'host'");
     if (!strcmp(argv[1], "--help") || !strcmp(argv[1], "-h") ||
@@ -247,12 +268,12 @@ int main(int argc, char **argv) {
     }
     struct options options = {0};
     if (strcmp(argv[1], "host") || !parse(argc, argv, &options)) return bad_usage("invalid command or arguments");
-    const char *endpoint = getenv("HX_HOST_SOCKET");
-    const char *token = getenv("HX_HOST_TOKEN");
+    char endpoint[sizeof(((struct sockaddr_un *)0)->sun_path)];
+    char token[HX_TOKEN + 2];
     bool status = !strcmp(options.args[0], "status") || !strcmp(options.args[0], "info");
     watch_signals();
     int sock = -1;
-    if (endpoint && token && strlen(token) == HX_TOKEN) sock = hx_connect(endpoint);
+    if (connection_details(endpoint, sizeof(endpoint), token)) sock = hx_connect(endpoint);
     if (sock < 0) {
         if (status) puts("{\"available\":false,\"mode\":\"unavailable\",\"environment\":\"linux-workspace\"}");
         else fputs("haniyax host: Android host bridge unavailable. Open HaniyaX and check Android host access.\n", stderr);

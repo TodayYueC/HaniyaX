@@ -70,6 +70,8 @@ object SdkInstaller {
         val guestCli = File(staging, "bin/haniyax")
         hostCli.copyTo(guestCli)
         Os.chmod(guestCli.path, MODE_EXEC)
+        // PRoot overlays this empty file with the app's local bridge descriptor.
+        File(staging, File(Paths.GUEST_HOST_BRIDGE).name).createNewFile()
         copied++
         File(staging, "VERSION").writeText(
             buildString {

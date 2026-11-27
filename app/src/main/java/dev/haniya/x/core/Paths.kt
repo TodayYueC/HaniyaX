@@ -32,6 +32,7 @@ object Paths {
     const val GUEST_HX = "/root/.haniyax"
     /** SDK, docs, adapters and the `hx` CLI shipped with the APK, inside the guest. */
     const val GUEST_SDK = "/opt/haniyax"
+    const val GUEST_HOST_BRIDGE = "$GUEST_SDK/.host-bridge"
 
     /** Maps a guest absolute path to the host file backing it. */
     fun host(guestPath: String): File = File(rootfs, guestPath.removePrefix("/"))

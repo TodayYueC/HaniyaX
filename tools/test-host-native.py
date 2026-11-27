@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Exercise the native protocol and runner on a Linux workstation using a fake broker."""
+import json
 import os
 from pathlib import Path
 import socket
@@ -68,6 +69,7 @@ int __wrap_connect(int fd, const struct sockaddr *addr, socklen_t len) {
         for tool in ("cli", "runner"):
             subprocess.run(
                 ["cc", "-std=c11", "-O2", "-Wall", "-Wextra", "-Werror",
+                 "-DHX_DESCRIPTOR=" + json.dumps(str(cls.bin / "bridge")),
                  str(SOURCE / f"{tool}.c"), str(shim), "-Wl,--wrap=socket,--wrap=connect",
                  "-o", str(cls.bin / tool)],
                 check=True,
@@ -105,11 +107,11 @@ int __wrap_connect(int fd, const struct sockaddr *addr, socklen_t len) {
     def test_cli_decodes_output_and_exit(self):
         peer, child = self.transport()
         token = "a" * 64
+        (self.bin / "bridge").write_text(f"fixture\n{token}\n")
         cmd = [str(self.bin / "cli"), "host", "--timeout", "10", "shell", "fixture"]
         with subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                               pass_fds=(child.fileno(),),
-                              env=dict(os.environ, HX_HOST_SOCKET="fixture", HX_HOST_TOKEN=token,
-                                       HX_TEST_FD=str(child.fileno()))) as cli:
+                              env={"HX_TEST_FD": str(child.fileno())}) as cli:
             child.close()
             with peer:
                 self.assertEqual(receive(peer, 69), ("HXHB1" + token).encode())
