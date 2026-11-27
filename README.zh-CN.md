@@ -51,6 +51,7 @@ ARCH=x86_64 ./tools/fetch-assets.sh     # 可选：调试版用的 x86_64 运行
 ## 工作区
 
 - proot + Debian trixie（glibc），以 root 运行，`HOME=/root`；项目默认在 `~/projects`。
+- **Android 宿主访问**：在设置中开启后，用 `haniyax host` 以 Android 应用身份或已验证的 Root 身份操作宿主。[使用说明与授权规则](app/src/main/assets/sdk/docs/android-host.md)
 - 进程由前台服务持有：离开页面、锁屏后继续运行；Android 回收应用后，任务显示「已被系统结束」，可恢复或重新启动。
 
 ## 已知限制

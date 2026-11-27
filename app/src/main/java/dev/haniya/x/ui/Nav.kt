@@ -12,6 +12,7 @@ sealed interface Route {
     data class Providers(val agentId: String? = null) : Route
     data object Dsh : Route
     data object Settings : Route
+    data object HostAccess : Route
     /** Plugin card details / permissions / editor for plugin [pluginId]. */
     data class Plugin(val pluginId: String) : Route
     /** File manager starting at guest [path]; [pickProject] = choose a folder to add as a project. */

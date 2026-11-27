@@ -53,6 +53,7 @@ object WorkspaceReset {
     }
 
     private suspend fun stopEverything() {
+        App.hostBridge.disable()
         Runtime.tasks.tasks.value.filter { it.status == TaskStatus.Running }.forEach { runCatching { Runtime.tasks.terminate(it.id) } }
         App.services.services.value.filter(ServiceDefs::isManagedAlive).forEach { runCatching { App.services.stop(it.def.name) } }
         val deadline = System.currentTimeMillis() + STOP_WAIT_MS

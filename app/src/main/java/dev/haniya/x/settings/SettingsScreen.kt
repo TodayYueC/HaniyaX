@@ -78,6 +78,7 @@ import dev.haniya.x.core.Paths
 import dev.haniya.x.home.Fmt
 import dev.haniya.x.home.ItemRow
 import dev.haniya.x.home.SectionLabel
+import dev.haniya.x.host.label
 import dev.haniya.x.home.copyToClipboard
 import dev.haniya.x.home.monoStyle
 import dev.haniya.x.home.openUrl
@@ -92,6 +93,7 @@ import android.provider.Settings as SystemSettings
 @Composable
 fun SettingsScreen() {
     val s by App.settings.settings.collectAsState()
+    val host by App.hostBridge.access.collectAsState()
     var resetOpen by remember { mutableStateOf(false) }
     var updateOpen by remember { mutableStateOf(false) }
 
@@ -113,6 +115,10 @@ fun SettingsScreen() {
         PhantomCard()
         SectionLabel("智能体")
         AgentsCard(s.agentSdkHints)
+        GlassCard {
+            ListRow("Android 宿主访问", icon = "shield", value = tr(host.mode.label),
+                onClick = { Nav.go(Route.HostAccess) })
+        }
         SectionLabel("工作区")
         WorkspaceCard(onReset = { resetOpen = true })
         SectionLabel("关于")

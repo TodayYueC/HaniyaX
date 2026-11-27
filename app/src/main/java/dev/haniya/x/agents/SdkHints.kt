@@ -19,6 +19,7 @@ object SdkHints {
         ## HaniyaX 工作区
         你运行在 HaniyaX（Android 上的 Linux 开发工作台）中。首页卡片、后台服务等由 `hx` 命令行管理（`hx plugin …`、`hx service …`、`hx docs`）。
         在创建或修改首页卡片、登记后台服务之前，先阅读 /opt/haniyax/docs/README.md。
+        当前终端在 Debian PRoot 中，Linux 的 UID 0 是模拟的。需要操作手机系统时，先运行 `haniyax host status` 查看实时权限；用 `haniyax host --help` 或阅读 /opt/haniyax/docs/android-host.md 查看调用方式。宿主操作可能需要用户在 HaniyaX 设置中确认。
     """.trimIndent()
 
     val block: String get() = "$BEGIN\n$BODY\n$END"

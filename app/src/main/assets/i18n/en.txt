@@ -1150,3 +1150,47 @@ New Shell
 Add cards
 Tap "Add" to put a card on Home; reorder it above
 All cards are already on Home
+Android host access
+Disabled
+Standard access
+Root access
+Confirm every request
+Auto-approve routine requests
+Full authorization
+Confirm each operation on your phone.
+Automatically allow standard access to properties, apps and settings.
+Automatically allow structured reads at the selected access level. Writes, installs and arbitrary shells still require confirmation.
+Not checked
+No supported su found
+su found. Root permission has yet to be verified.
+Verifying Root permission…
+Verified Android UID 0
+Could not obtain Android UID 0
+With Root access enabled, workspace programs can automatically read logs and shared files accessible to Root.
+Enable full authorization
+Enable host access
+Host service is unavailable
+Allow Android requests from the Linux workspace. Re-enable after HaniyaX restarts.
+Access mode
+Android app UID
+Root permission
+Verify and enable Root access
+Your device’s Root manager may ask you to approve.
+Switch to standard access
+Turn off host access
+Revoke permission and end active host requests.
+Authorization policy
+Active host requests
+Terminate
+Execution history
+No executions yet
+Denied
+Approval expired
+Timed out
+Failed
+Use from Linux
+Android host request needs approval
+This request runs as Android UID 0.
+This request runs under the HaniyaX Android app identity.
+Deny
+Allow once

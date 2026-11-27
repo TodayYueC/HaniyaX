@@ -5,6 +5,7 @@ import android.content.res.AssetManager
 import android.system.Os
 import androidx.core.content.pm.PackageInfoCompat
 import dev.haniya.x.core.Paths
+import dev.haniya.x.host.HostRunner
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
@@ -65,6 +66,11 @@ object SdkInstaller {
             onLog("此安装包未附带 SDK 文件，仅创建目录")
         }
         File(staging, "bin").mkdirs()
+        val hostCli = File(context.applicationInfo.nativeLibraryDir, HostRunner.CLI)
+        val guestCli = File(staging, "bin/haniyax")
+        hostCli.copyTo(guestCli)
+        Os.chmod(guestCli.path, MODE_EXEC)
+        copied++
         File(staging, "VERSION").writeText(
             buildString {
                 append("versionName=").append(id.versionName).append('\n')

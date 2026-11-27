@@ -6,6 +6,7 @@ import dev.haniya.x.agents.AgentManager
 import dev.haniya.x.control.ControlServer
 import dev.haniya.x.core.Paths
 import dev.haniya.x.home.ProjectStore
+import dev.haniya.x.host.HostBridge
 import dev.haniya.x.plugins.PluginHost
 import dev.haniya.x.runtime.JobsImpl
 import dev.haniya.x.runtime.Runtime
@@ -31,6 +32,7 @@ class HaniyaApp : Application() {
         Paths.init(this)
         runCatching { I18n.init(this) }
         App.settings = SettingsStore()
+        App.hostBridge = HostBridge(this)
         Runtime.workspace = WorkspaceImpl(this)
         Runtime.jobs = JobsImpl()
         Runtime.tasks = TaskManager(this)

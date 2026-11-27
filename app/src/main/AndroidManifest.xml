@@ -51,6 +51,8 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Keeps user-started terminal sessions and developer tools running" />
         </service>
+        <service android:name=".host.HostBridgeService" android:exported="false" />
+
         <!-- The workspace in the system file manager / other apps' pickers. -->
         <provider
             android:name=".files.WorkspaceDocumentsProvider"

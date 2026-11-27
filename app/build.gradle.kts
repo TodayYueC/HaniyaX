@@ -1,10 +1,57 @@
 import java.util.Properties
+import javax.inject.Inject
+import org.gradle.process.ExecOperations
 
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
 }
+
+/** Build Android executables, then package them under library names for APK-managed extraction. */
+abstract class BuildHostTools @Inject constructor(private val execOperations: ExecOperations) : DefaultTask() {
+    @get:InputDirectory
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val sources: DirectoryProperty
+
+    @get:Internal
+    abstract val ndkDir: DirectoryProperty
+
+    @get:Input
+    abstract val abis: ListProperty<String>
+
+    @get:OutputDirectory
+    abstract val jniOutput: DirectoryProperty
+
+    @TaskAction
+    fun build() {
+        val ndk = ndkDir.get().asFile
+        val windows = System.getProperty("os.name").startsWith("Windows", ignoreCase = true)
+        val tool = File(ndk, if (windows) "ndk-build.cmd" else "ndk-build")
+        val libs = File(temporaryDir, "libs")
+        val output = jniOutput.get().asFile
+        output.deleteRecursively()
+        execOperations.exec {
+            workingDir(sources.get().asFile)
+            val launch = if (windows) listOf("cmd.exe", "/c", tool.absolutePath) else listOf(tool.absolutePath)
+            commandLine(launch + listOf(
+                "NDK_PROJECT_PATH=null",
+                "APP_BUILD_SCRIPT=${sources.get().file("Android.mk").asFile.absolutePath}",
+                "APP_PLATFORM=android-26",
+                "APP_ABI=${abis.get().joinToString(" ")}",
+                "NDK_OUT=${File(temporaryDir, "obj").absolutePath}",
+                "NDK_LIBS_OUT=${libs.absolutePath}",
+            ))
+        }
+        for (abi in abis.get()) {
+            for (toolName in listOf("haniyax_host_runner", "haniyax_host_cli")) {
+                File(libs, "$abi/$toolName").copyTo(File(output, "$abi/lib$toolName.so"), overwrite = true)
+            }
+        }
+    }
+}
+
+val hostNdkVersion = "28.2.13676358"
 
 // Release signing: keystore/haniyax-release.jks + keystore/keystore.properties (both git-ignored).
 val ksProps: Properties = Properties().also { p ->
@@ -15,6 +62,7 @@ val hasReleaseKey: Boolean = rootProject.file("keystore/haniyax-release.jks").ex
 
 android {
     namespace = "dev.haniya.x"
+    ndkVersion = hostNdkVersion
     compileSdk { version = release(37) { minorApiLevel = 2 } }
     defaultConfig {
         applicationId = "dev.haniya.x"
@@ -49,10 +97,24 @@ android {
     buildFeatures { compose = true; buildConfig = true }
     androidResources { noCompress += listOf("xz", "ttf") }
     packaging {
+        jniLibs.keepDebugSymbols += setOf("**/libhaniyax_host_runner.so", "**/libhaniyax_host_cli.so")
         resources.excludes += listOf("META-INF/*.md", "META-INF/LICENSE*", "META-INF/NOTICE*")
         jniLibs.useLegacyPackaging = true
     }
     lint { checkReleaseBuilds = false; abortOnError = false }
+}
+
+androidComponents {
+    val ndkPath = sdkComponents.ndkDirectory
+    onVariants { variant ->
+        val name = variant.name.replaceFirstChar { it.uppercaseChar() }
+        val buildHostTools = tasks.register<BuildHostTools>("compile${name}HostTools") {
+            sources.set(layout.projectDirectory.dir("src/main/host-native"))
+            ndkDir.set(ndkPath)
+            abis.set(if (variant.buildType == "debug") listOf("arm64-v8a", "x86_64") else listOf("arm64-v8a"))
+        }
+        variant.sources.jniLibs?.addGeneratedSourceDirectory(buildHostTools, BuildHostTools::jniOutput)
+    }
 }
 
 dependencies {

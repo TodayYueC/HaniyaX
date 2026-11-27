@@ -51,6 +51,7 @@ UI strings are written in Chinese in the source and translated at runtime. Each 
 ## Workspace
 
 - proot + Debian trixie (glibc), running as root with `HOME=/root`; projects live in `~/projects` by default.
+- **Android host bridge**: enable in Settings to run `haniyax host` commands using the Android app UID or verified Root. [Usage and authorization](app/src/main/assets/sdk/docs/android-host.md)
 - Processes are owned by a foreground service, so they keep running when you leave a page or lock the screen. If Android reclaims the app, tasks are marked "ended by the system" and can be resumed or restarted.
 
 ## Known limitations

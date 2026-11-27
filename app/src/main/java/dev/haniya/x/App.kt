@@ -1,6 +1,7 @@
 package dev.haniya.x
 
 import dev.haniya.x.agents.AgentsApi
+import dev.haniya.x.host.HostBridge
 import dev.haniya.x.plugins.PluginsApi
 import dev.haniya.x.projects.ProjectsApi
 import dev.haniya.x.services.ServicesApi
@@ -13,6 +14,7 @@ import dev.haniya.x.settings.SettingsApi
 object App {
     lateinit var context: android.content.Context
     lateinit var settings: SettingsApi
+    lateinit var hostBridge: HostBridge
     lateinit var projects: ProjectsApi
     lateinit var services: ServicesApi
     lateinit var agents: AgentsApi

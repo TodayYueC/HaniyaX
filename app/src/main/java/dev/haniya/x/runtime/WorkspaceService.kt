@@ -18,6 +18,8 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import dev.haniya.x.App
 import dev.haniya.x.MainActivity
+import dev.haniya.x.host.HostBridgeService
+import dev.haniya.x.host.HostMode
 import dev.haniya.x.R
 import dev.haniya.x.services.ServiceState
 import dev.haniya.x.services.ServiceStatus
@@ -67,10 +69,13 @@ class WorkspaceService : Service() {
         super.onCreate()
         createChannel()
         goForeground(buildNotification(View(TaskCounts(), 0, WsBrief.of(Runtime.workspace.state.value), false)))
+        runCatching { startService(Intent(this, HostBridgeService::class.java)) }
+            .onFailure { Log.w(TAG, "Cannot start the Android host bridge", it) }
         observe()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_DISABLE_HOST) App.hostBridge.disable()
         // startForegroundService() requires startForeground() after every start request.
         if (!foreground) goForeground(buildNotification(View(TaskCounts(), 0, WsBrief.of(Runtime.workspace.state.value), false)))
         return START_NOT_STICKY
@@ -82,6 +87,8 @@ class WorkspaceService : Service() {
 
     override fun onDestroy() {
         scope.cancel()
+        stopService(Intent(this, HostBridgeService::class.java))
+        App.hostBridge.disable()
         releaseLocks()
         running = false
         super.onDestroy()
@@ -97,11 +104,15 @@ class WorkspaceService : Service() {
         }
         val wake: Flow<Boolean> = App.settings.settings.map { it.wakeLock }
         scope.launch {
-            combine(counts, services, Runtime.workspace.state.map { WsBrief.of(it) }, wake) { c, s, ws, w -> View(c, s, ws, w) }
-                .distinctUntilChanged()
-                .collect { v ->
+            val views = combine(counts, services, Runtime.workspace.state.map { WsBrief.of(it) }, wake) { c, s, ws, w ->
+                View(c, s, ws, w)
+            }.distinctUntilChanged()
+            val hostMode = App.hostBridge.access.map { it.mode }.distinctUntilChanged()
+            val pendingHost = App.hostBridge.approvals.map { it.isNotEmpty() }.distinctUntilChanged()
+            combine(views, hostMode, pendingHost) { v, mode, pending -> Triple(v, mode, pending) }
+                .collect { (v, mode, pending) ->
                     applyLocks(v.wake || v.ws.installing)
-                    notify(buildNotification(v))
+                    notify(buildNotification(v, mode, pending))
                 }
         }
         // App.services is wired after Runtime in HaniyaApp.onCreate; it is ready by the time a service starts.
@@ -123,9 +134,14 @@ class WorkspaceService : Service() {
         }
     }
 
-    private fun buildNotification(v: View): Notification {
+    private fun buildNotification(
+        v: View,
+        hostMode: HostMode = HostMode.Disabled,
+        hostPending: Boolean = false,
+    ): Notification {
         val ws = v.ws
         val text = when {
+            hostPending -> dev.haniya.relief.i18n.I18n.tr("Android 宿主请求等待确认")
             ws.ready -> dev.haniya.relief.i18n.I18n.tr("{0} 个任务运行中 · {1} 个服务", v.counts.running, v.services)
             ws.installing -> dev.haniya.relief.i18n.I18n.tr("正在创建工作区 · {0}", dev.haniya.relief.i18n.I18n.tr(ws.step.orEmpty()))
             ws.failed -> dev.haniya.relief.i18n.I18n.tr("工作区尚未就绪")
@@ -134,7 +150,8 @@ class WorkspaceService : Service() {
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
             // With exactly one running task, tapping goes straight back to it.
-            if (ws.ready && v.counts.running == 1) v.counts.latestRunningId?.let { putExtra(EXTRA_TASK_ID, it) }
+            if (hostPending) action = ACTION_HOST_ACCESS
+            else if (ws.ready && v.counts.running == 1) v.counts.latestRunningId?.let { putExtra(EXTRA_TASK_ID, it) }
         }
         val pi = PendingIntent.getActivity(
             this, 0, intent,
@@ -151,6 +168,13 @@ class WorkspaceService : Service() {
             .setSilent(true)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+        if (hostMode != HostMode.Disabled) {
+            val disable = PendingIntent.getService(
+                this, 1, Intent(this, WorkspaceService::class.java).setAction(ACTION_DISABLE_HOST),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+            b.addAction(0, dev.haniya.relief.i18n.I18n.tr("紧急关闭宿主访问"), disable)
+        }
         if (ws.installing) {
             val p = ws.permille
             if (p == null) b.setProgress(0, 0, true) else b.setProgress(1000, p, false)
@@ -211,6 +235,8 @@ class WorkspaceService : Service() {
         private const val TAG = "HaniyaX.Service"
         private const val CHANNEL = "workspace"
         private const val NOTIFICATION_ID = 1001
+        const val ACTION_HOST_ACCESS = "dev.haniya.x.REVIEW_HOST_ACCESS"
+        private const val ACTION_DISABLE_HOST = "dev.haniya.x.DISABLE_HOST_ACCESS"
         const val EXTRA_TASK_ID = "dev.haniya.x.TASK_ID"
 
         @Volatile private var running = false

@@ -37,6 +37,8 @@ import dev.haniya.x.dsh.DshScreen
 import dev.haniya.x.files.FilesScreen
 import dev.haniya.x.home.HomeScreen
 import dev.haniya.x.home.StartRouter
+import dev.haniya.x.host.HostApprovalSheet
+import dev.haniya.x.host.HostAccessScreen
 import dev.haniya.x.plugins.PluginScreen
 import dev.haniya.x.providers.ProvidersScreen
 import dev.haniya.x.runtime.Runtime
@@ -66,6 +68,7 @@ class MainActivity : ComponentActivity() {
                 CompositionLocalProvider(LocalToast provides toast, dev.haniya.relief.component.LocalLanguage provides dev.haniya.relief.i18n.I18n.state.value) {
                     AppBackground(Modifier.fillMaxSize()) {
                         Root()
+                        HostApprovalSheet()
                         ToastHost(toast)
                     }
                 }
@@ -81,6 +84,11 @@ class MainActivity : ComponentActivity() {
 
     /** Notification taps carry EXTRA_TASK_ID to jump back into a task's tab. */
     private fun handleIntent(intent: Intent?) {
+        if (intent?.action == WorkspaceService.ACTION_HOST_ACCESS) {
+            Nav.selectTab(Route.Settings)
+            Nav.go(Route.HostAccess)
+            return
+        }
         val taskId = intent?.getStringExtra(WorkspaceService.EXTRA_TASK_ID) ?: return
         Runtime.tasks.focus(taskId)
         Nav.reset(Route.Terminal(taskId))
@@ -116,6 +124,7 @@ private fun Root() {
                 is Route.Providers -> ProvidersScreen(route.agentId)
                 Route.Dsh -> DshScreen()
                 Route.Settings -> SettingsScreen()
+                Route.HostAccess -> HostAccessScreen()
                 is Route.Plugin -> PluginScreen(route.pluginId)
                 is Route.Service -> ServiceScreen(route.name)
                 is Route.Files -> FilesScreen(route.path, route.pickProject)
