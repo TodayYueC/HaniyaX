@@ -19,13 +19,17 @@ class HostRequestTest {
         assertFalse(plan("apps", root = true).needsApproval(HostPolicy.Full))
     }
 
-    @Test fun `arbitrary shells and mutations require explicit approval even in full mode`() {
+    @Test fun `full authorization runs shells and mutations without approval`() {
         for (request in listOf(
             plan("shell", "getprop; reboot"), plan("shell", "getprop\ngetprop"),
             plan("root"), plan("shell"), plan("install", "4096", "fixture.apk"),
             plan("settings", "put", "system", "key", "a b"), plan("settings", "delete", "global", "key"),
             plan("push", "/sdcard/file", "42"),
-        )) assertTrue(request.needsApproval(HostPolicy.Full))
+        )) {
+            assertTrue(request.needsApproval(HostPolicy.Manual))
+            assertTrue(request.needsApproval(HostPolicy.Routine))
+            assertFalse(request.needsApproval(HostPolicy.Full))
+        }
         assertTrue(plan("install", "4096", "fixture.apk").root)
         assertTrue(plan("root").tty)
     }

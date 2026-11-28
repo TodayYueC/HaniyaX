@@ -54,7 +54,7 @@ private val HostPolicy.description: String
     get() = when (this) {
         HostPolicy.Manual -> "每次操作都需要在手机上确认。"
         HostPolicy.Routine -> "自动允许普通身份查询属性、应用列表和系统设置。"
-        HostPolicy.Full -> "自动允许当前访问模式下的结构化读取。写入、安装和任意 Shell 仍需要确认。"
+        HostPolicy.Full -> "自动执行当前访问模式允许的所有操作，无需逐次确认。"
     }
 
 private val HostRoot.label: String
@@ -82,7 +82,7 @@ fun HostAccessScreen() {
                 Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(HostPolicy.Full.description, style = ReliefTheme.type.body)
-                    Text("启用 Root 访问后，工作区程序可自动读取 Root 能访问的日志和共享文件。", style = ReliefTheme.type.caption)
+                    Text("在 Root 访问下，工作区程序可以直接执行 Root 命令和修改系统设置。", style = ReliefTheme.type.caption)
                     PrimaryButton("启用完全授权", {
                         host.setPolicy(HostPolicy.Full)
                         fullPrompt = false

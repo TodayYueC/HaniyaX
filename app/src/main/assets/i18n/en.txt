@@ -1159,14 +1159,14 @@ Auto-approve routine requests
 Full authorization
 Confirm each operation on your phone.
 Automatically allow standard access to properties, apps and settings.
-Automatically allow structured reads at the selected access level. Writes, installs and arbitrary shells still require confirmation.
+Automatically run all operations allowed by the current access mode without per-request confirmation.
 Not checked
 No supported su found
 su found. Root permission has yet to be verified.
 Verifying Root permission…
 Verified Android UID 0
 Could not obtain Android UID 0
-With Root access enabled, workspace programs can automatically read logs and shared files accessible to Root.
+With Root access enabled, workspace programs can run Root commands and modify system settings directly.
 Enable full authorization
 Enable host access
 Host service is unavailable

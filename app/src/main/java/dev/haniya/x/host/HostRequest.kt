@@ -20,7 +20,7 @@ internal data class HostCommand(
     fun needsApproval(policy: HostPolicy): Boolean = when (policy) {
         HostPolicy.Manual -> true
         HostPolicy.Routine -> root || risk != HostRisk.Routine
-        HostPolicy.Full -> risk == HostRisk.Confirm
+        HostPolicy.Full -> false
     }
 }
 

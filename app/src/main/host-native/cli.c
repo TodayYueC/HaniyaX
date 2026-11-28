@@ -25,7 +25,7 @@ static const char usage[] =
     "  logcat                       Stream Android logs until canceled\n"
     "  push LOCAL HOST              Copy a Linux file to Android, replacing the destination\n"
     "  pull HOST LOCAL              Copy an Android file to Linux, replacing the destination\n"
-    "  install APK                  Install using Android Root access; requires confirmation\n"
+    "  install APK                  Install using Android Root access\n"
     "  settings list NAMESPACE\n"
     "  settings get NAMESPACE KEY\n"
     "  settings put NAMESPACE KEY VALUE\n"
